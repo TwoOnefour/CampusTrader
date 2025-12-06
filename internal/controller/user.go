@@ -73,7 +73,7 @@ func (c *UserController) Login(ctx *gin.Context) {
 	})
 }
 
-// Me GET /api/v1/user/me
+// Me GET /api/v1/user/me need login
 func (c *UserController) Me(ctx *gin.Context) {
 	id := ctx.GetUint("userID")
 	info, err := c.svc.GetUserInfo(ctx, id)
