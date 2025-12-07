@@ -75,7 +75,7 @@ func (c *ProductController) CreateProduct(ctx *gin.Context) {
 		Status:      req.Status,
 		Condition:   req.Condition,
 		ImageUrl:    req.ImageUrl,
-		SellerId:    ctx.GetUint64("userID"),
+		SellerId:    uint64(ctx.GetUint("userID")),
 	})
 	if err != nil {
 		response.Error(ctx, http.StatusInternalServerError, err.Error())

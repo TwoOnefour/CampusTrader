@@ -47,3 +47,10 @@ func (s *OrderService) CreateOrder(ctx context.Context, itemID, buyerID uint64) 
 
 	return nil
 }
+
+func (s *OrderService) ListOrder(ctx context.Context, userId uint) ([]model.Order, error) {
+	db := s.db.WithContext(ctx)
+	var order []model.Order
+	db.Model(&model.Order{}).Where("buyer_id=?", userId).Find(&order)
+	return order, nil
+}

@@ -62,7 +62,7 @@ func (s *UserService) Login(ctx context.Context, account string, password string
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		return "", errors.New("密码不正确")
 	}
-	return jwtUtils.GenerateToken(user.ID, user.Username)
+	return jwtUtils.GenerateToken(uint(user.ID), user.Username)
 }
 
 func (s *UserService) GetUserInfo(ctx context.Context, id uint) (*model.User, error) {
