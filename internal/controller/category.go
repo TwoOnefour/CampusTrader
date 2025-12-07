@@ -23,6 +23,7 @@ func NewCategoryController(svc *service.CategoryService) *CategoryController {
 	}
 }
 
+// category/list
 func (c *CategoryController) ListCategory(ctx *gin.Context) {
 	category, err := c.svc.ListCategory(ctx)
 	if err != nil {

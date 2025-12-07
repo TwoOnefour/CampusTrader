@@ -25,7 +25,7 @@ func NewOrderController(svc *service.OrderService) *OrderController {
 	return &OrderController{orderSvc: svc}
 }
 
-// need login
+// need login order/create
 func (c *OrderController) Order(ctx *gin.Context) {
 	var orderReq OrderReq
 	if err := ctx.ShouldBindJSON(&orderReq); err != nil {

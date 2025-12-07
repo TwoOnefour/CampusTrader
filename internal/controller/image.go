@@ -19,6 +19,7 @@ func NewImageController(svc *service.ImageService) *ImageController {
 	}
 }
 
+// upload need login
 func (c *ImageController) Upload(ctx *gin.Context) {
 	fileHeader, err := ctx.FormFile("file")
 	if err != nil {
