@@ -2,10 +2,11 @@ package jwtUtils
 
 import (
 	"github.com/golang-jwt/jwt/v5"
+	"os"
 	"time"
 )
 
-var jwtKey = []byte("my_secret_key_123456")
+var JwtKey = os.Getenv("JWT_KEY")
 
 func GenerateToken(userID uint, username string) (string, error) {
 	claims := AuthClaims{
@@ -13,10 +14,10 @@ func GenerateToken(userID uint, username string) (string, error) {
 		Username: username,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-			Issuer:    "my-app",
+			Issuer:    "github.com/twoonefour/CampusTrader",
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtKey)
+	return token.SignedString(JwtKey)
 }

@@ -20,6 +20,7 @@ func NewOrderService(db *gorm.DB) *OrderService {
 func (s *OrderService) CreateOrder(ctx context.Context, itemID, buyerID uint64) error {
 	var item model.Product
 	db := s.db.WithContext(ctx)
+	// TODO: redis lua
 	db.First(&item, itemID)
 	if item.Status != "available" {
 		return errors.New("已售出")
@@ -42,7 +43,7 @@ func (s *OrderService) CreateOrder(ctx context.Context, itemID, buyerID uint64) 
 		return err
 	}
 
-	// go s.SendNotification(...)
+	// go s.SendNotification(...) TODO: post order notify
 
 	return nil
 }

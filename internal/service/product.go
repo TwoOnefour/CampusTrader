@@ -35,14 +35,14 @@ func (s *ProductService) CreateProduct(ctx context.Context, req *model.Product) 
 	return nil
 }
 
-func (s *ProductService) ListProducts(ctx context.Context, pageSize, lastID int) ([]model.Product, error) {
+func (s *ProductService) ListProducts(ctx context.Context, pageSize, lastID uint64) ([]model.Product, error) {
 	db := s.db.WithContext(ctx).Model(&model.Product{}).Where("status = ?", "available")
 	if lastID > 0 {
 		db = db.Where("id < ?", lastID)
 	}
 	var products []model.Product
 	err := db.Order("id DESC").
-		Limit(pageSize).
+		Limit(int(pageSize)).
 		Find(&products).Error
 	return products, err
 }

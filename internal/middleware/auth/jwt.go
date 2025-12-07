@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-var jwtKey = []byte("my_secret_key_123456")
+var jwtKey = jwtUtils.JwtKey
 
 func JWTAuthMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
