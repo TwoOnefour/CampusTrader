@@ -39,6 +39,7 @@ func InitRouter(
 			authGroup.POST("/product/create", productCtrl.CreateProduct)
 			// image上传要登陆
 			authGroup.POST("/image/upload", imageCtrl.Upload)
+			authGroup.GET("/product/my", productCtrl.ListMyProducts)
 		}
 	}
 	return r

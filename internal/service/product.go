@@ -46,3 +46,13 @@ func (s *ProductService) ListProducts(ctx context.Context, pageSize, lastID uint
 		Find(&products).Error
 	return products, err
 }
+
+func (s *ProductService) ListMyProducts(ctx context.Context, sellerID uint64) ([]model.Product, error) {
+	var products []model.Product
+	err := s.db.WithContext(ctx).
+		Model(&model.Product{}).
+		Where("seller_id = ?", sellerID).
+		Order("created_at DESC"). // 按时间倒序
+		Find(&products).Error
+	return products, err
+}

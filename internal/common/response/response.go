@@ -11,7 +11,7 @@ func Success(ctx *gin.Context, data interface{}) {
 }
 
 func Error(ctx *gin.Context, code int, msg string) {
-	ctx.JSON(200, gin.H{
+	ctx.JSON(code, gin.H{
 		"code": code,
 		"msg":  msg,
 	})

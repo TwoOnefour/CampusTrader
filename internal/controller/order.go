@@ -37,6 +37,7 @@ func (c *OrderController) Order(ctx *gin.Context) {
 		response.Error(ctx, http.StatusBadRequest, err.Error())
 		return
 	}
+	response.Success(ctx, nil)
 }
 
 // need login /api/v1/order/my

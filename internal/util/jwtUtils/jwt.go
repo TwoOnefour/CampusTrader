@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-var JwtKey = os.Getenv("JWT_KEY")
+var JwtKey = []byte(os.Getenv("JWT_KEY"))
 
 func GenerateToken(userID uint, username string) (string, error) {
 	claims := AuthClaims{

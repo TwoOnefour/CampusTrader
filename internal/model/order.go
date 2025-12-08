@@ -10,5 +10,5 @@ type Order struct {
 	Amount      float64   `gorm:"column:amount;type:DECIMAL(10, 2);comment:实际成交金额;not null;" json:"amount"`                                         // 实际成交金额
 	CreatedAt   time.Time `gorm:"column:created_at;type:TIMESTAMP;default:CURRENT_TIMESTAMP;" json:"created_at"`
 	UpdatedAt   time.Time `gorm:"column:updated_at;type:TIMESTAMP;default:CURRENT_TIMESTAMP;" json:"updated_at"`
-	CompletedAt time.Time `gorm:"column:completed_at;type:TIMESTAMP;comment:完成时间;" json:"completed_at"` // 完成时间
+	CompletedAt time.Time `gorm:"column:completed_at;type:TIMESTAMP;comment:完成时间;default:CURRENT_TIMESTAMP;" json:"completed_at"` // 完成时间
 }

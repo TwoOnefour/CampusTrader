@@ -58,7 +58,13 @@ func InitMySQL() {
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
 	fmt.Println("MySQL 连接成功！")
-	if err := DB.AutoMigrate(&model.User{}); err != nil {
+	allModels := []interface{}{
+		&model.User{},
+		&model.Product{},
+		&model.Category{},
+		&model.Order{},
+	}
+	if err := DB.AutoMigrate(allModels...); err != nil {
 		return
 	}
 }
