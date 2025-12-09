@@ -20,9 +20,9 @@ func main() {
 	r := router.InitRouter(
 		controller.NewUserController(service.NewUserService(database.DB)),
 		controller.NewProductController(service.NewProductService(database.DB)),
-		controller.NewOrderController(service.NewOrderService(database.DB)),
+		controller.NewOrderController(service.NewOrderService(database.DB, service.NewLogService(database.DB))),
 		controller.NewImageController(service.NewImageService(storage.NewLocalStorage("./static/uploads", "/static/uploads"))),
 	)
 	r.Run(":8080")
-	
+
 }

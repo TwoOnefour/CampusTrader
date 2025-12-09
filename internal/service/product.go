@@ -5,16 +5,19 @@ import (
 	"context"
 	"errors"
 	"gorm.io/gorm"
+	"log"
 	"time"
 )
 
 type ProductService struct {
-	db *gorm.DB
+	db         *gorm.DB
+	logService *LogService
 }
 
-func NewProductService(db *gorm.DB) *ProductService {
+func NewProductService(db *gorm.DB, logService *LogService) *ProductService {
 	return &ProductService{
-		db: db,
+		db:         db,
+		logService: logService,
 	}
 }
 
@@ -55,4 +58,43 @@ func (s *ProductService) ListMyProducts(ctx context.Context, sellerID uint64) ([
 		Order("created_at DESC"). // 按时间倒序
 		Find(&products).Error
 	return products, err
+}
+
+func (s *ProductService) SearchProduct(ctx context.Context, keyword string, count uint64) ([]model.Product, error) {
+	db := s.db.WithContext(ctx).Model(&model.Product{})
+	var products []model.Product
+	err := db.Where("name like ?", "%"+keyword+"%").Order("id desc").Limit(int(count)).Find(&products).Error
+	return products, err
+}
+
+func (s *ProductService) SearchSuggestion(ctx context.Context, keyword string) ([]string, error) {
+	db := s.db.WithContext(ctx).Model(&model.Product{})
+	var products []model.Product
+	err := db.Where("name like ?", "%"+keyword+"%").Order("id desc").Limit(5).Find(&products).Error
+	if err != nil {
+		return nil, err
+	}
+	productPrefix := make([]string, len(products))
+	for i := 0; i < len(products); i++ {
+		productPrefix[i] = products[i].Name
+	}
+	return productPrefix, err
+}
+
+func (s *ProductService) DropProduct(ctx context.Context, productId, operatorId uint64, reason string) error {
+	db := s.db.WithContext(ctx)
+	err := db.Model(&model.Product{}).Delete(&model.Product{
+		Id: productId,
+	}, productId).Error
+	if err != nil {
+		return err
+	}
+	notifyLogging := func() {
+		err := s.logService.OnProductDrop(productId, operatorId, reason)
+		if err != nil {
+			log.Println(err.Error())
+		}
+	}
+	go notifyLogging()
+	return nil
 }

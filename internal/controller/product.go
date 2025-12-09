@@ -6,6 +6,7 @@ import (
 	"CampusTrader/internal/service"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"strings"
 )
 
 type ListProductSearchParams struct {
@@ -18,6 +19,16 @@ type ListProductSearchResult struct {
 	Total uint64          `json:"total"`
 	Page  uint64          `json:"page"`
 	Size  uint64          `json:"size"`
+}
+
+type SearchProductParams struct {
+	Keyword string `form:"keyword"`
+	Count   uint64 `form:"count"`
+}
+
+type DropProductReq struct {
+	ProductId uint64 `form:"product_id"`
+	Reason    string `form:"reason"`
 }
 
 type CreateProductReq struct {
@@ -101,4 +112,56 @@ func (c *ProductController) ListMyProducts(ctx *gin.Context) {
 		Page:  1,
 		Size:  uint64(len(products)),
 	})
+}
+
+func (c *ProductController) SearchProducts(ctx *gin.Context) {
+	var req SearchProductParams
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		response.Error(ctx, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if req.Count > 100 {
+		req.Count = 100
+	}
+	products, err := c.productSvc.SearchProduct(ctx, req.Keyword, req.Count)
+	if err != nil {
+		response.Error(ctx, http.StatusInternalServerError, err.Error())
+		return
+	}
+	response.Success(ctx, ListProductSearchResult{
+		List:  products,
+		Total: uint64(len(products)),
+	})
+}
+
+func (c *ProductController) SearchProductsSuggestion(ctx *gin.Context) {
+	prefix := strings.TrimSpace(ctx.Query("prefix"))
+	if prefix == "" {
+		response.Error(ctx, http.StatusBadRequest, "不正确的参数")
+		return
+	}
+	productPrefix, err := c.productSvc.SearchSuggestion(ctx, prefix)
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, err.Error())
+		return
+	}
+	response.Success(ctx, map[string]interface{}{
+		"list": productPrefix,
+	})
+}
+
+func (c *ProductController) DropProduct(ctx *gin.Context) {
+	var dropProductReq DropProductReq
+	if err := ctx.ShouldBindJSON(&dropProductReq); err != nil {
+		response.Error(ctx, http.StatusBadRequest, err.Error())
+		return
+	}
+	userID := ctx.GetUint("userID")
+
+	err := c.productSvc.DropProduct(ctx, dropProductReq.ProductId, uint64(userID), dropProductReq.Reason)
+	if err != nil {
+		response.Error(ctx, http.StatusInternalServerError, err.Error())
+	}
+	response.Success(ctx, nil)
 }

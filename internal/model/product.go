@@ -19,3 +19,20 @@ type Product struct {
 	UpdatedAt   time.Time      `gorm:"column:updated_at;type:TIMESTAMP;default:CURRENT_TIMESTAMP;" json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deleted_at"`
 }
+
+type ProductSoldLog struct {
+	Id        uint64    `gorm:"column:id;type:BIGINT UNSIGNED;primaryKey;" json:"id"`
+	ProductId uint64    `gorm:"column:product_id;type:BIGINT UNSIGNED;not null;" json:"product_id"`
+	BuyerId   uint64    `gorm:"column:buyer_id;type:BIGINT UNSIGNED;not null;" json:"buyer_id"`
+	SellerId  uint64    `gorm:"column:seller_id;type:BIGINT UNSIGNED;not null;" json:"seller_id"`
+	Price     float64   `gorm:"column:price;type:DECIMAL(10, 2);comment:成交价;not null;" json:"price"` // 成交价
+	CreatedAt time.Time `gorm:"column:created_at;type:TIMESTAMP;default:CURRENT_TIMESTAMP;" json:"created_at"`
+}
+
+type ProductDropLogs struct {
+	Id         uint64    `gorm:"column:id;type:BIGINT UNSIGNED;primaryKey;" json:"id"`
+	ProductId  uint64    `gorm:"column:product_id;type:BIGINT UNSIGNED;not null;" json:"product_id"`
+	OperatorId uint64    `gorm:"column:operator_id;type:BIGINT UNSIGNED;comment:操作人ID;not null;" json:"operator_id"` // 操作人ID
+	Reason     string    `gorm:"column:reason;type:VARCHAR(255);comment:下架原因;" json:"reason"`                        // 下架原因
+	CreatedAt  time.Time `gorm:"column:created_at;type:TIMESTAMP;default:CURRENT_TIMESTAMP;" json:"created_at"`
+}

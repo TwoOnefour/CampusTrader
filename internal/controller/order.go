@@ -32,7 +32,7 @@ func (c *OrderController) Order(ctx *gin.Context) {
 		response.Error(ctx, http.StatusBadRequest, err.Error())
 		return
 	}
-	err := c.orderSvc.CreateOrder(ctx, orderReq.ItemId, ctx.GetUint64("userID"))
+	err := c.orderSvc.CreateOrder(ctx, orderReq.ItemId, uint64(ctx.GetUint("userID")))
 	if err != nil {
 		response.Error(ctx, http.StatusBadRequest, err.Error())
 		return

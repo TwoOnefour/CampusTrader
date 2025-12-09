@@ -5,15 +5,18 @@ import (
 	"context"
 	"errors"
 	"gorm.io/gorm"
+	"log"
 )
 
 type OrderService struct {
-	db *gorm.DB
+	db         *gorm.DB
+	logService *LogService
 }
 
-func NewOrderService(db *gorm.DB) *OrderService {
+func NewOrderService(db *gorm.DB, logService *LogService) *OrderService {
 	return &OrderService{
-		db: db,
+		db:         db,
+		logService: logService,
 	}
 }
 
@@ -36,6 +39,7 @@ func (s *OrderService) CreateOrder(ctx context.Context, itemID, buyerID uint64) 
 			ProductId: item.Id,
 			BuyerId:   buyerID,
 			Amount:    item.Price,
+			SellerId:  item.SellerId,
 		}).Error
 	})
 
@@ -43,7 +47,17 @@ func (s *OrderService) CreateOrder(ctx context.Context, itemID, buyerID uint64) 
 		return err
 	}
 
-	// go s.SendNotification(...) TODO: post order notify
+	go func() {
+		err := s.logService.OnOrder(&model.Order{
+			ProductId: item.Id,
+			BuyerId:   buyerID,
+			Amount:    item.Price,
+			SellerId:  item.SellerId,
+		})
+		if err != nil {
+			log.Println(err.Error())
+		}
+	}()
 
 	return nil
 }
