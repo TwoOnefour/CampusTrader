@@ -8,47 +8,69 @@ import (
 
 func InitRouter(
 	userCtrl *controller.UserController,
-	productCtrl *controller.ProductController, // 新增
-	orderCtrl *controller.OrderController, // 新增
+	productCtrl *controller.ProductController,
+	orderCtrl *controller.OrderController,
 	imageCtrl *controller.ImageController,
+	statisticsCtrl *controller.StatisticsController,
+	categoryCtrl *controller.CategoryController,
 ) *gin.Engine {
 	r := gin.Default()
-	r.Use(Cors())
+	r.Use(Cors()) // 跨域中间件
 
-	apiGroup := r.Group("/api/v1")
+	// 建议统一使用 v1 版本组
+	v1 := r.Group("/api/v1")
 	{
-		// User
-		apiGroup.POST("/login", userCtrl.Login)
-		apiGroup.POST("/register", userCtrl.Register)
-
-		apiGroup.GET("/category/list")
-
-		// Product (无需登录)
+		authGroup := v1.Group("/auth")
 		{
-			apiGroup.GET("/product/search", productCtrl.SearchProducts)
-			apiGroup.GET("/product/suggestion", productCtrl.SearchProductsSuggestion)
-			apiGroup.GET("/product/list", productCtrl.ListProducts)
+			// 虽然是 UserCtrl 处理，但语义上是 Auth
+			authGroup.POST("/login", userCtrl.Login)
+			authGroup.POST("/register", userCtrl.Register)
 		}
 
-		// Private Group
-		authGroup := apiGroup.Group("/")
-		authGroup.Use(auth.JWTAuthMiddleware())
+		userPublicGroup := v1.Group("/users")
 		{
-			authGroup.GET("/me", userCtrl.Me)
+			userPublicGroup.GET("/:id/rating", statisticsCtrl.GetUserRating)
+			userPublicGroup.GET("/:id/trade-stats", statisticsCtrl.GetUserCompletedOrderRecord)
+		}
 
-			// Order (需要登录)
-			authGroup.POST("/order/create", orderCtrl.Order)
-			authGroup.GET("/order/my", orderCtrl.ListOrder)
-			// image上传要登陆
-			authGroup.POST("/image/upload", imageCtrl.Upload)
+		productGroup := v1.Group("/products")
+		{
 
-			authGroup.GET("/product/my", productCtrl.ListMyProducts)
-			authGroup.POST("/product/create", productCtrl.CreateProduct)
-			authGroup.POST("/product/drop", productCtrl.DropProduct)
+			productGroup.GET("", productCtrl.ListProducts)
+
+			productGroup.GET("/search", productCtrl.SearchProducts)
+
+			productGroup.GET("/suggestion", productCtrl.SearchProductsSuggestion)
+		}
+
+		categoryGroup := v1.Group("/categories")
+		{
+			categoryGroup.GET("", categoryCtrl.ListCategory)               // 原来的 /category/list 改为 GET /categories
+			categoryGroup.GET("/popular", statisticsCtrl.GetHotCategories) // 热门分类
+		}
+
+		privateGroup := v1.Group("/")
+		privateGroup.Use(auth.JWTAuthMiddleware())
+		{
+
+			privateGroup.GET("/users/me", userCtrl.Me)
+			privateGroup.GET("/users/me/products", productCtrl.ListMyProducts)
+			privateGroup.POST("/products", productCtrl.CreateProduct)    // 创建商品用 POST /products
+			privateGroup.POST("/products/drop", productCtrl.DropProduct) // 或者 DELETE /products/:id
+
+			orderGroup := privateGroup.Group("/orders")
+			{
+				orderGroup.POST("", orderCtrl.Order)
+				orderGroup.GET("/my", orderCtrl.ListOrder)
+			}
+
+			privateGroup.POST("/images", imageCtrl.Upload)
 		}
 	}
+
 	return r
 }
+
 func Cors() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")

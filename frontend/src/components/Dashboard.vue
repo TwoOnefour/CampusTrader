@@ -6,7 +6,9 @@ import {
   NButton, NCard, NInput, NSpace, NTag, NGrid, NGridItem,
   useMessage, NAvatar, NDropdown, NIcon, NEmpty, NModal, NForm, NFormItem,
   NInputNumber, NSelect, NUpload, NUploadDragger, NText, NImage,NTabs,NTabPane,
-  type UploadFileInfo
+  NAutoComplete,
+  type AutoCompleteOption,
+  type UploadFileInfo,
 } from 'naive-ui'
 // 引入图标
 import {
@@ -25,6 +27,72 @@ const token = ref(localStorage.getItem('token') || '')
 const username = ref('User')
 const currentView = ref('market')
 const products = ref<Product[]>([])
+const searchKeyword = ref('')
+// 存放下拉框的选项，格式必须是 { label: '显示文字', value: '选中后的值' }
+const searchOptions = ref<AutoCompleteOption[]>([])
+
+// 简单的防抖定时器，防止请求太频繁
+let searchTimer: any = null
+
+// 当用户输入内容变化时触发
+const handleSearchInput = (value: string) => {
+  searchKeyword.value = value
+
+  // 1. 如果输入为空
+  if (!value || !value.trim()) {
+    searchOptions.value = [] // 清空下拉建议
+    loadMarket()             // <---【核心修改】新增这行：立即重新加载默认市场列表
+    return
+  }
+
+  // 2. 清除上一次没执行的定时器
+  if (searchTimer) clearTimeout(searchTimer)
+
+  // 3. 开启防抖定时器 (保持不变)
+  searchTimer = setTimeout(async () => {
+    try {
+      const res = await api.getSuggestions(value)
+      const list = res.list || []
+      searchOptions.value = list.map(item => ({
+        label: item,
+        value: item
+      }))
+    } catch (e) {
+      console.error('获取建议失败', e)
+    }
+  }, 300)
+}
+
+// 选中建议或者按回车时触发搜索
+const handleSearch = async (value?: string) => {
+  // 如果是选中建议传进来的 value，就用它；否则用输入框当前的 searchKeyword
+  const keyword = (typeof value === 'string' ? value : searchKeyword.value).trim()
+
+  // 更新一下输入框显示的值（如果是点选建议的话）
+  searchKeyword.value = keyword
+
+  // 关闭下拉建议（清空选项即可）
+  searchOptions.value = []
+
+  if (!keyword) {
+    // 清空搜索时，重置回到市场第一页
+    loadMarket(false, true)
+    return
+  }
+
+  try {
+    message.loading('搜索中...')
+    const res = await api.searchProducts(keyword)
+    // @ts-ignore
+    products.value = res.list || []
+    if (products.value.length === 0) {
+      message.info('未找到相关商品')
+    }
+  } catch (err) {
+    message.error('搜索出错')
+  }
+}
+
 
 // --- 1. 动态计算菜单 (实现需求一：权限控制) ---
 const allMenuOptions = [
@@ -156,7 +224,67 @@ const handleUploadChange = (data: { fileList: UploadFileInfo[] }) => {
     createForm.image_url = ''
   }
 }
+// --- 分页状态管理 ---
+const pageSize = 8             // 每页显示多少条
+const currentPage = ref(1)     // 当前第几页（仅用于显示）
+const cursorHistory = ref([0]) // 游标历史栈：第1页对应0，第2页对应上一页最后一条ID...
+const hasMore = ref(true)      // 是否还有下一页数据
 
+// --- 修改后的加载函数 ---
+// useCursor: 是否使用当前记录的游标去加载（用于翻页）
+// reset: 是否重置分页（用于切换菜单或搜索时）
+const loadMarket = async (useCursor = false, reset = false) => {
+  try {
+    if (reset) {
+      currentPage.value = 1
+      cursorHistory.value = [0]
+      hasMore.value = true
+    }
+
+    // 获取当前页对应的 last_id
+    // cursorHistory 比如是 [0, 100, 92]，currentPage=2，则取 index=1 的 100
+    const cursorIndex = currentPage.value - 1
+    const lastId = useCursor ? cursorHistory.value[cursorIndex] : 0
+
+    // 调用 API
+    const res = await api.getProducts(lastId, pageSize)
+
+    // @ts-ignore
+    const list = res.list || []
+    products.value = list
+
+    // 判断是否还有下一页：如果返回的数量 < pageSize，说明数据取完了
+    // 注意：后端返回 total 仅仅是本次查询的数量，不是总数，所以不能用 total 判断
+    if (list.length < pageSize) {
+      hasMore.value = false
+    } else {
+      hasMore.value = true
+      // 预存下一页的游标：取当前列表最后一条数据的 ID
+      const lastItem = list[list.length - 1]
+      // 只有当是最新页时才 push，防止在“上一页”操作时重复添加
+      if (cursorHistory.value.length <= currentPage.value) {
+        cursorHistory.value.push(lastItem.id)
+      }
+    }
+  } catch (err) {
+    message.error('加载失败')
+  }
+}
+
+// --- 翻页操作 ---
+const handlePrevPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--
+    loadMarket(true) // true 表示使用历史游标
+  }
+}
+
+const handleNextPage = () => {
+  if (hasMore.value) {
+    currentPage.value++
+    loadMarket(true)
+  }
+}
 // 提交发布表单
 const handleCreateSubmit = () => {
   // 这里应该调用 api.createProduct(createForm)
@@ -179,8 +307,13 @@ const handleMenuUpdate = (key: string) => {
     return
   }
   currentView.value = key
-  if (key === 'market') loadMarket()
-  else if (key === 'my-products') loadMyProducts()
+
+  if (key === 'market') {
+    // 切换回市场时，重置分页 (reset = true)
+    loadMarket(false, true)
+  } else if (key === 'my-products') {
+    loadMyProducts()
+  }
 }
 
 const handleUserDropdown = (key: string) => {
@@ -193,14 +326,6 @@ const handleUserDropdown = (key: string) => {
   } else if (key === 'profile') {
     currentView.value = 'profile'
   }
-}
-
-const loadMarket = async () => {
-  try {
-    const res = await api.getProducts()
-    // @ts-ignore
-    products.value = res.list || []
-  } catch (err) { message.error('加载失败') }
 }
 
 const loadMyProducts = async () => {
@@ -237,12 +362,30 @@ onMounted(() => {
 
     <n-layout>
       <n-layout-header bordered style="height: 64px; display: flex; align-items: center; padding: 0 24px; justify-content: space-between;">
-        <div style="display: flex; align-items: center;">
+
+        <div style="display: flex; align-items: center; min-width: 120px;">
           <h2 style="margin: 0; font-size: 16px;">
             {{ currentView === 'market' ? '🛒 交易市场' : currentView === 'my-products' ? '📦 我的商品' : '个人中心' }}
           </h2>
         </div>
-        <div style="display: flex; align-items: center; gap: 20px;">
+
+        <div v-if="currentView === 'market'" style="flex: 1; max-width: 400px; margin: 0 20px;">
+          <n-auto-complete
+              v-model:value="searchKeyword"
+              :options="searchOptions"
+              placeholder="输入关键词搜索 (例如: Mac)"
+              clearable
+              @update:value="handleSearchInput"
+              @select="handleSearch"
+              @keydown.enter="handleSearch"
+          >
+            <template #prefix>
+              <n-icon :component="SearchOutline" />
+            </template>
+          </n-auto-complete>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 20px; min-width: 120px; justify-content: flex-end;">
           <div v-if="token">
             <n-dropdown :options="userDropdownOptions" @select="handleUserDropdown">
               <div style="display: flex; align-items: center; cursor: pointer; gap: 10px;">
@@ -300,6 +443,21 @@ onMounted(() => {
             </template>
           </n-grid>
           <n-empty v-if="products.length === 0" description="这里空空如也" style="margin-top: 100px" />
+          <div v-if="currentView === 'market' && products.length > 0"
+               style="display: flex; justify-content: center; align-items: center; margin-top: 30px; gap: 20px;">
+
+            <n-button :disabled="currentPage === 1" @click="handlePrevPage">
+              上一页
+            </n-button>
+
+            <span style="font-weight: bold; color: #666;">
+        第 {{ currentPage }} 页
+    </span>
+
+            <n-button :disabled="!hasMore" @click="handleNextPage">
+              下一页
+            </n-button>
+          </div>
         </div>
 
         <div v-else-if="currentView === 'profile'">

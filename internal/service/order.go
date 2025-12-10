@@ -46,19 +46,17 @@ func (s *OrderService) CreateOrder(ctx context.Context, itemID, buyerID uint64) 
 	if err != nil {
 		return err
 	}
-
+	// 这里service替代触发器写入日志, 且为异步
 	go func() {
-		err := s.logService.OnOrder(&model.Order{
+		if err := s.logService.OnOrder(&model.Order{
 			ProductId: item.Id,
 			BuyerId:   buyerID,
 			Amount:    item.Price,
 			SellerId:  item.SellerId,
-		})
-		if err != nil {
+		}); err != nil {
 			log.Println(err.Error())
 		}
 	}()
-
 	return nil
 }
 

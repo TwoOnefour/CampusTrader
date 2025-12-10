@@ -63,6 +63,9 @@ func InitMySQL() {
 		&model.Product{},
 		&model.Category{},
 		&model.Order{},
+		&model.ProductSoldLog{},
+		&model.ProductDropLogs{},
+		&model.Review{},
 	}
 	if err := DB.AutoMigrate(allModels...); err != nil {
 		return

@@ -75,13 +75,25 @@ export const api = {
     getMe: () => request.get('/me'),
 
     // 获取商品列表 (对应 ProductController.ListProducts)
-    getProducts: (lastId: number = 0) =>
-        request.get<ProductListResp>('/product/list', { params: { last_id: lastId, page_size: 10 } }),
-
+    getProducts: (lastId: number = 0, pageSize: number = 8) =>
+        request.get<ProductListResp>('/product/list', {
+            params: { last_id: lastId, page_size: pageSize }
+        }),
     // 创建订单 (对应 OrderController.Order)
     createOrder: (itemId: number) => request.post('/order/create', { item_id: itemId }),
     getMyProducts: () => request.get<ProductListResp>('/product/my'),
     register: (data: RegisterReq) => request.post('/register', data),
+    searchProducts: (keyword: string) =>
+        request.get<ProductListResp>('/product/search', {
+            params: {
+                keyword: keyword,
+                count: 20 // 默认搜索返回20条，你可以自己改
+            }
+        }),
+    getSuggestions: (prefix: string) =>
+        request.get<{ list: string[] }>('/product/suggestion', {
+            params: { prefix }
+        }),
 }
 
 export interface RegisterReq {

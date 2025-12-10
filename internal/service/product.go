@@ -70,7 +70,7 @@ func (s *ProductService) SearchProduct(ctx context.Context, keyword string, coun
 func (s *ProductService) SearchSuggestion(ctx context.Context, keyword string) ([]string, error) {
 	db := s.db.WithContext(ctx).Model(&model.Product{})
 	var products []model.Product
-	err := db.Where("name like ?", "%"+keyword+"%").Order("id desc").Limit(5).Find(&products).Error
+	err := db.Where("name like ? and status = 'available'", "%"+keyword+"%").Order("id desc").Limit(5).Find(&products).Error
 	if err != nil {
 		return nil, err
 	}

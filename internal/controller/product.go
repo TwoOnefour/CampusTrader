@@ -96,16 +96,13 @@ func (c *ProductController) CreateProduct(ctx *gin.Context) {
 }
 
 func (c *ProductController) ListMyProducts(ctx *gin.Context) {
-	// 从 JWT 中获取当前登录用户 ID (注意类型转换)
 	userID := ctx.GetUint("userID")
-
 	products, err := c.productSvc.ListMyProducts(ctx, uint64(userID))
 	if err != nil {
 		response.Error(ctx, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	// 复用之前的 ListProductSearchResult 结构
 	response.Success(ctx, ListProductSearchResult{
 		List:  products,
 		Total: uint64(len(products)),
