@@ -68,32 +68,58 @@ export interface ProductListResp {
 // --- API 方法导出 ---
 
 export const api = {
+    // ----------------- Auth Group (/api/v1/auth) -----------------
+
     // 登录
-    login: (data: LoginReq) => request.post<{ token: string }>('/login', data),
+    // 对应 Go: authGroup.POST("/login", ...) -> /api/v1/auth/login
+    login: (data: LoginReq) => request.post<{ token: string }>('/auth/login', data),
+
+    // 注册
+    // 对应 Go: authGroup.POST("/register", ...) -> /api/v1/auth/register
+    register: (data: RegisterReq) => request.post('/auth/register', data),
+
+    // ----------------- User/Private Group (/api/v1) -----------------
 
     // 获取当前用户信息
-    getMe: () => request.get('/me'),
+    // 对应 Go: privateGroup.GET("/users/me", ...) -> /api/v1/users/me
+    getMe: () => request.get('/users/me'),
 
-    // 获取商品列表 (对应 ProductController.ListProducts)
+    // 获取我发布的商品
+    // 对应 Go: privateGroup.GET("/users/me/products", ...) -> /api/v1/users/me/products
+    getMyProducts: () => request.get<ProductListResp>('/users/me/products'),
+
+    // ----------------- Product Group (/api/v1/products) -----------------
+
+    // 获取商品列表
+    // 对应 Go: productGroup.GET("", ...) -> /api/v1/products
     getProducts: (lastId: number = 0, pageSize: number = 8) =>
-        request.get<ProductListResp>('/product/list', {
+        request.get<ProductListResp>('/products', {
             params: { last_id: lastId, page_size: pageSize }
         }),
-    // 创建订单 (对应 OrderController.Order)
-    createOrder: (itemId: number) => request.post('/order/create', { item_id: itemId }),
-    getMyProducts: () => request.get<ProductListResp>('/product/my'),
-    register: (data: RegisterReq) => request.post('/register', data),
+
+    // 搜索商品
+    // 对应 Go: productGroup.GET("/search", ...) -> /api/v1/products/search
     searchProducts: (keyword: string) =>
-        request.get<ProductListResp>('/product/search', {
+        request.get<ProductListResp>('/products/search', {
             params: {
                 keyword: keyword,
-                count: 20 // 默认搜索返回20条，你可以自己改
+                count: 20
             }
         }),
+
+    // 搜索建议
+    // 对应 Go: productGroup.GET("/suggestion", ...) -> /api/v1/products/suggestion
     getSuggestions: (prefix: string) =>
-        request.get<{ list: string[] }>('/product/suggestion', {
+        request.get<{ list: string[] }>('/products/suggestion', {
             params: { prefix }
         }),
+
+    // ----------------- Order Group (/api/v1/orders) -----------------
+
+    // 创建订单
+    // 对应 Go: orderGroup.POST("", ...) -> /api/v1/orders
+    // 注意：后端这里是 privateGroup 下的 /orders 组
+    createOrder: (itemId: number) => request.post('/orders', { item_id: itemId }),
 }
 
 export interface RegisterReq {
