@@ -33,8 +33,6 @@ func (s *StatisticsController) GetHotCategories(ctx *gin.Context) {
 
 func (s *StatisticsController) GetUserRating(ctx *gin.Context) {
 	type UserParams struct {
-		// 重点1：这里的 tag 是 uri，且名字必须和路由里的 :id 对应
-		// binding:"required,min=1" 可以顺便帮你做校验
 		UserId uint64 `uri:"id" binding:"required,min=1"`
 	}
 

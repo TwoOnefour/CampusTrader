@@ -3,7 +3,7 @@ import { h, ref, onMounted, computed, Component, reactive } from 'vue'
 import { api, type Product } from '../api'
 import {
   NLayout, NLayoutSider, NLayoutHeader, NLayoutContent, NMenu,
-  NButton, NCard, NInput, NSpace, NTag, NGrid, NGridItem,
+  NButton, NCard, NInput, NSpace, NTag, NGrid, NGridItem, NList, NListItem, NThing, NResult,
   useMessage, NAvatar, NDropdown, NIcon, NEmpty, NModal, NForm, NFormItem,
   NInputNumber, NSelect, NUpload, NUploadDragger, NText, NImage,NTabs,NTabPane,
   NAutoComplete,
@@ -13,7 +13,7 @@ import {
 // 引入图标
 import {
   BagHandleOutline, PersonOutline, LogOutOutline,
-  CartOutline, AddCircleOutline, SearchOutline, CloudUploadOutline
+  CartOutline, AddCircleOutline, SearchOutline, CloudUploadOutline,FlameOutline
 } from '@vicons/ionicons5'
 // import { CloudUpload } from '@vicons/fa'
 
@@ -97,10 +97,13 @@ const handleSearch = async (value?: string) => {
 // --- 1. 动态计算菜单 (实现需求一：权限控制) ---
 const allMenuOptions = [
   { label: '交易市场', key: 'market', icon: renderIcon(BagHandleOutline) },
+  { label: '热门分类', key: 'hot-categories', icon: renderIcon(FlameOutline) }, // 新增
   { label: '我发布的', key: 'my-products', icon: renderIcon(CartOutline), requiresAuth: true },
   { label: '发布商品', key: 'create', icon: renderIcon(AddCircleOutline), requiresAuth: true },
   { label: '个人中心', key: 'profile', icon: renderIcon(PersonOutline), requiresAuth: true }
 ]
+
+const hotCategories = ref<Category[]>([])
 
 const menuOptions = computed(() => {
   return allMenuOptions.filter(option => {
@@ -313,6 +316,18 @@ const handleMenuUpdate = (key: string) => {
     loadMarket(false, true)
   } else if (key === 'my-products') {
     loadMyProducts()
+  } else if (key === 'hot-categories') {
+    loadHotCategories()
+  }
+}
+
+const loadHotCategories = async () => {
+  try {
+    const res = await api.getHotCategories()
+    // @ts-ignore
+    hotCategories.value = res.list || []
+  } catch (e) {
+    message.error('加载热门分类失败')
   }
 }
 
@@ -424,7 +439,9 @@ onMounted(() => {
                       <n-tag size="small" :type="item.status === 'available' ? 'success' : 'default'">{{ item.status }}</n-tag>
                       <n-tag size="small" :bordered="false">{{ item.condition }}</n-tag>
                     </n-space>
-
+                    <n-tag v-if="item.user_rating_stat.review_count > 0" size="small" type="warning" :bordered="false">
+                      ⭐ {{ item.user_rating_stat.avg_rating.toFixed(1) }}  item.user_rating_stat.review_count 人评价
+                    </n-tag>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
                       <span style="color: #f59e0b; font-size: 18px; font-weight: bold;">¥ {{ item.price }}</span>
                       <n-button
@@ -458,6 +475,24 @@ onMounted(() => {
               下一页
             </n-button>
           </div>
+        </div>
+        <div v-else-if="currentView === 'hot-categories'">
+          <n-card title="🔥 最火商品分类 (Top 3)">
+            <n-list hoverable clickable>
+              <n-list-item v-for="(cat, index) in hotCategories" :key="cat.id">
+                <n-thing :title="cat.name" content-style="margin-top: 10px;">
+                  <template #description>
+                    <n-tag type="error" size="small">No. {{ index + 1 }}</n-tag>
+                  </template>
+                  这里是 {{ cat.name }} 专区，包含了大量热门交易商品。
+                </n-thing>
+                <template #suffix>
+                  <n-button size="small">查看详情</n-button>
+                </template>
+              </n-list-item>
+            </n-list>
+            <n-empty v-if="hotCategories.length === 0" description="暂无热门数据" />
+          </n-card>
         </div>
 
         <div v-else-if="currentView === 'profile'">

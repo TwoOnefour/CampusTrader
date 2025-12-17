@@ -20,6 +20,11 @@ type Product struct {
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deleted_at"`
 }
 
+type ProductWithUserRating struct {
+	Product
+	RatingStat RatingStat `json:"user_rating_stat"`
+}
+
 type ProductSoldLog struct {
 	Id        uint64    `gorm:"column:id;type:BIGINT UNSIGNED;primaryKey;" json:"id"`
 	ProductId uint64    `gorm:"column:product_id;type:BIGINT UNSIGNED;not null;" json:"product_id"`

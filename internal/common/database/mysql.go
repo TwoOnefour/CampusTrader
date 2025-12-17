@@ -2,7 +2,6 @@ package database
 
 import (
 	"CampusTrader/internal/model"
-	"fmt"
 	"log"
 	"os"
 	"time"
@@ -57,7 +56,6 @@ func InitMySQL() {
 	// SetConnMaxLifetime 设置了连接可复用的最大时间
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
-	fmt.Println("MySQL 连接成功！")
 	allModels := []interface{}{
 		&model.User{},
 		&model.Product{},

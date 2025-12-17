@@ -49,6 +49,18 @@ export interface Product {
     condition: 'new' | 'like_new' | 'good' | 'fair' | 'poor'
     image_url: string
     created_at: string
+    user_rating_stat: UserRatingStat // 新增字段
+}
+
+export interface UserRatingStat {
+    target_user_id: number
+    avg_rating:    number
+    review_count: number
+}
+
+export interface Category {
+    id: number
+    name: string
 }
 
 // 对应 internal/controller/user.go 中的 LoginReq
@@ -106,7 +118,7 @@ export const api = {
                 count: 20
             }
         }),
-
+    getHotCategories: () => request.get<{ list: Category[] }>('/categories/popular'),
     // 搜索建议
     // 对应 Go: productGroup.GET("/suggestion", ...) -> /api/v1/products/suggestion
     getSuggestions: (prefix: string) =>

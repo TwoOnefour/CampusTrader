@@ -9,17 +9,21 @@ import (
 	"strings"
 )
 
+type ListResult[T any] struct {
+	List  []T    `json:"list"`
+	Total uint64 `json:"total"`
+	Page  uint64 `json:"page"`
+	Size  uint64 `json:"size"`
+}
+
 type ListProductSearchParams struct {
 	LastId   uint64 `form:"last_id,default=0"`
 	PageSize uint64 `form:"page_size,default=50"`
 }
 
-type ListProductSearchResult struct {
-	List  []model.Product `json:"list"`
-	Total uint64          `json:"total"`
-	Page  uint64          `json:"page"`
-	Size  uint64          `json:"size"`
-}
+type ListProductSearchResult = ListResult[model.ProductWithUserRating]
+
+type ListUserProductSearchResult = ListResult[model.Product]
 
 type SearchProductParams struct {
 	Keyword string `form:"keyword"`
@@ -43,11 +47,13 @@ type CreateProductReq struct {
 
 type ProductController struct {
 	productSvc *service.ProductService
+	statsSvc   *service.StatisticsService
 }
 
-func NewProductController(productSvc *service.ProductService) *ProductController {
+func NewProductController(productSvc *service.ProductService, statsSvc *service.StatisticsService) *ProductController {
 	return &ProductController{
 		productSvc: productSvc,
+		statsSvc:   statsSvc,
 	}
 }
 
@@ -63,6 +69,7 @@ func (c *ProductController) ListProducts(ctx *gin.Context) {
 		response.Error(ctx, http.StatusInternalServerError, err.Error())
 		return
 	}
+
 	response.Success(ctx, ListProductSearchResult{
 		List:  products,
 		Total: uint64(len(products)),
@@ -103,7 +110,7 @@ func (c *ProductController) ListMyProducts(ctx *gin.Context) {
 		return
 	}
 
-	response.Success(ctx, ListProductSearchResult{
+	response.Success(ctx, ListUserProductSearchResult{
 		List:  products,
 		Total: uint64(len(products)),
 		Page:  1,
@@ -126,7 +133,7 @@ func (c *ProductController) SearchProducts(ctx *gin.Context) {
 		response.Error(ctx, http.StatusInternalServerError, err.Error())
 		return
 	}
-	response.Success(ctx, ListProductSearchResult{
+	response.Success(ctx, ListUserProductSearchResult{
 		List:  products,
 		Total: uint64(len(products)),
 	})

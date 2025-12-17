@@ -10,14 +10,16 @@ import (
 )
 
 type ProductService struct {
-	db         *gorm.DB
-	logService *LogService
+	db          *gorm.DB
+	logService  *LogService
+	statService *StatisticsService
 }
 
-func NewProductService(db *gorm.DB, logService *LogService) *ProductService {
+func NewProductService(db *gorm.DB, logService *LogService, statService *StatisticsService) *ProductService {
 	return &ProductService{
-		db:         db,
-		logService: logService,
+		db:          db,
+		logService:  logService,
+		statService: statService,
 	}
 }
 
@@ -38,7 +40,7 @@ func (s *ProductService) CreateProduct(ctx context.Context, req *model.Product) 
 	return nil
 }
 
-func (s *ProductService) ListProducts(ctx context.Context, pageSize, lastID uint64) ([]model.Product, error) {
+func (s *ProductService) ListProducts(ctx context.Context, pageSize, lastID uint64) ([]model.ProductWithUserRating, error) {
 	db := s.db.WithContext(ctx).Model(&model.Product{}).Where("status = ?", "available")
 	if lastID > 0 {
 		db = db.Where("id < ?", lastID)
@@ -47,7 +49,28 @@ func (s *ProductService) ListProducts(ctx context.Context, pageSize, lastID uint
 	err := db.Order("id DESC").
 		Limit(int(pageSize)).
 		Find(&products).Error
-	return products, err
+	if err != nil {
+		return nil, err
+	}
+	productIDs := make([]uint64, len(products))
+	for i, p := range products {
+		productIDs[i] = p.Id
+	}
+	ratings, err := s.statService.BatchGetUserRating(ctx, productIDs)
+	if err != nil {
+		return nil, err
+	}
+	productsWithRatings := make([]model.ProductWithUserRating, len(products))
+	for i, p := range products {
+		productsWithRatings[i] = model.ProductWithUserRating{
+			Product: p,
+		}
+		productsWithRatings[i].RatingStat.TargetUserID = p.Id
+		if stat, ok := ratings[p.Id]; ok {
+			productsWithRatings[i].RatingStat = stat
+		}
+	}
+	return productsWithRatings, err
 }
 
 func (s *ProductService) ListMyProducts(ctx context.Context, sellerID uint64) ([]model.Product, error) {

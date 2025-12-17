@@ -17,13 +17,22 @@ func main() {
 	}
 	database.InitMySQL()
 
+	logService := service.NewLogService(database.DB)
+	userService := service.NewUserService(database.DB)
+
+	orderService := service.NewOrderService(database.DB, logService)
+	storageService := storage.NewLocalStorage("./static/uploads", "/static/uploads")
+	imageService := service.NewImageService(storageService)
+	categoryService := service.NewCategoryService(database.DB)
+	statService := service.NewStatisticsService(database.DB)
+	productService := service.NewProductService(database.DB, logService, statService)
 	r := router.InitRouter(
-		controller.NewUserController(service.NewUserService(database.DB)),
-		controller.NewProductController(service.NewProductService(database.DB, service.NewLogService(database.DB))),
-		controller.NewOrderController(service.NewOrderService(database.DB, service.NewLogService(database.DB))),
-		controller.NewImageController(service.NewImageService(storage.NewLocalStorage("./static/uploads", "/static/uploads"))),
-		controller.NewStatisticsController(service.NewStatisticsService(database.DB)),
-		controller.NewCategoryController(service.NewCategoryService(database.DB)),
+		controller.NewUserController(userService),
+		controller.NewProductController(productService, statService),
+		controller.NewOrderController(orderService),
+		controller.NewImageController(imageService),
+		controller.NewStatisticsController(statService),
+		controller.NewCategoryController(categoryService),
 	)
 	r.Run(":8080")
 

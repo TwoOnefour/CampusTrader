@@ -11,3 +11,9 @@ type Review struct {
 	Comment      string    `gorm:"column:comment;type:TEXT;comment:评价内容;" json:"comment"`                                   // 评价内容
 	CreatedAt    time.Time `gorm:"column:created_at;type:TIMESTAMP;default:CURRENT_TIMESTAMP;" json:"created_at"`
 }
+
+type RatingStat struct {
+	TargetUserID uint64  `gorm:"column:target_user_id" json:"target_user_id"`
+	AvgRating    float64 `gorm:"column:avg_rating" json:"avg_rating"`
+	ReviewCount  uint64  `gorm:"column:review_count" json:"review_count"`
+}
