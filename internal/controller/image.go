@@ -3,10 +3,11 @@ package controller
 import (
 	"CampusTrader/internal/common/response"
 	"CampusTrader/internal/service"
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"net/http"
 	"path/filepath"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type ImageController struct {

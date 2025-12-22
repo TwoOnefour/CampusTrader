@@ -19,7 +19,7 @@ func InitMySQL() {
 	// 格式: 用户名:密码@tcp(IP:端口)/数据库名?配置项
 	// parseTime=True: 自动把数据库时间转为 Go 的 time.Time
 	// loc=Local: 使用本地时区
-	dsn := os.Getenv("MYSQL_DSN")
+	dsn := os.Getenv("DATABASE_DSN")
 
 	// 2. 配置 GORM 日志 (这对于毕设调试非常重要！)
 	// 这样控制台会打印出每一条执行的 SQL 语句

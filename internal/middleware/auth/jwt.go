@@ -27,7 +27,7 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 			return
 		}
 		tokenString := parts[1]
-		
+
 		token, err := jwt.ParseWithClaims(tokenString, &jwtUtils.AuthClaims{}, func(token *jwt.Token) (interface{}, error) {
 			return jwtKey, nil
 		})
