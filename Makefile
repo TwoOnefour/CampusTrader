@@ -7,7 +7,7 @@ ASSETS_DIR = internal/assets/dist
 BINARY_NAME = CampusTrader
 
 # 1. 完整构建：先做前端，再做后端
-build: build-ui build-go
+build: build-ui build-go package
 
 # 2. 编译前端
 build-ui:
@@ -21,6 +21,10 @@ build-ui:
 build-go:
 	@echo "正在构建 Go 二进制文件 (静态编译)..."
 	go build -ldflags="-s -w" -o CampusTrader cmd/main.go
+
+package:
+	rm -rf campustrader.tar.gz
+	tar -zcvf campustrader.tar.gz ./CampusTrader ./.env ./static
 
 # 4. 清理产物
 clean:

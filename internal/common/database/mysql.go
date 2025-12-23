@@ -26,10 +26,10 @@ func InitMySQL() {
 	newLogger := logger.New(
 		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
 		logger.Config{
-			SlowThreshold:             time.Second, // 慢 SQL 阈值
-			LogLevel:                  logger.Info, // 级别：Info 会打印所有 SQL
-			IgnoreRecordNotFoundError: true,        // 忽略 ErrRecordNotFound 错误
-			Colorful:                  true,        // 彩色打印
+			SlowThreshold:             time.Second,  // 慢 SQL 阈值
+			LogLevel:                  logger.Error, // 级别：Info 会打印所有 SQL
+			IgnoreRecordNotFoundError: true,         // 忽略 ErrRecordNotFound 错误
+			Colorful:                  true,         // 彩色打印
 		},
 	)
 

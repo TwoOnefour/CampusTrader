@@ -428,10 +428,17 @@ const loadMyProducts = async () => {
 
 const handleBuy = async (id: number) => {
   try {
-    await api.createOrder(id)
+    const resp = await api.createOrder(id)
+
     message.success('购买成功')
     loadMarket()
-  } catch (err) { message.error('购买失败') }
+  } catch (err) {
+    if (err.response) {
+      message.error(err.response.data.msg)
+      return
+    }
+    message.error(err.toString())
+  }
 }
 
 onMounted(() => {
@@ -468,7 +475,7 @@ onMounted(() => {
       <n-menu :options="menuOptions" :value="currentView" @update:value="handleMenuUpdate" />
     </div>
     </n-layout-sider>
-    
+
     <n-layout>
       <n-layout-header bordered style="height: 64px; display: flex; align-items: center; padding: 0 24px; justify-content: space-between;">
 

@@ -30,7 +30,9 @@ request.interceptors.response.use(
         }
     },
     (error) => {
-        console.error('网络异常', error)
+        if (error.response) {
+            console.error(error.response.data)
+        }
         return Promise.reject(error)
     }
 )
@@ -89,7 +91,7 @@ export interface CreateProductReq {
 // --- API 方法导出 ---
 
 export const api = {
-    // ----------------- Auth Group (/api/v1/auth) -----------------
+    // ----------------- Auth Group (/api/v1/auth) -------网络异常----------
 
     // 登录
     // 对应 Go: authGroup.POST("/login", ...) -> /api/v1/auth/login
