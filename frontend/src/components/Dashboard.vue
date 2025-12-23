@@ -21,10 +21,10 @@ import {
 function renderIcon(icon: Component) {
   return () => h(NIcon, null, { default: () => h(icon) })
 }
-
+const submitting = ref<boolean>(false)
 const message = useMessage()
 const token = ref(localStorage.getItem('token') || '')
-const username = ref('User')
+const username = ref(localStorage.getItem('user') || 'User')
 const currentView = ref('market')
 const products = ref<Product[]>([])
 const searchKeyword = ref('')
@@ -132,6 +132,16 @@ const createForm = reactive({
   condition: 'good',
   image_url: ''
 })
+
+const initialFormState = {
+   name: '',
+   description: '',
+   price: null as number | null,
+   category_id: null as number | null,
+   condition: 'good',
+   image_url: ''
+}
+
 const fileList = ref<UploadFileInfo[]>([])
 // --- 3. 登录/注册相关 (新增) ---
 const showLoginModal = ref(false)
@@ -163,6 +173,7 @@ const handleLoginSubmit = async () => {
     // @ts-ignore
     const tokenStr = res.token
     localStorage.setItem('token', tokenStr)
+    localStorage.setItem('user', username.value)
     token.value = tokenStr
 
     message.success('登录成功！')
@@ -210,23 +221,42 @@ const categoryOptions = [
   { label: '宿舍电器', value: 3 }
 ]
 
-// 处理文件上传变化
+const handleCustomRequest = async ({ file, onFinish, onError }: UploadCustomRequestOptions) => {
+  try {
+    // 1. 防御性检查：确保拿到了原生 JS File 对象
+    if (!file.file) {
+      message.error('未找到文件流')
+      return
+    }
+
+    // 2. 调用我们之前封装好的 API (它会自动带 Token)
+    // 注意：这里 api.uploadImage 返回的是 Promise<{ url: string }>
+    const res = await api.uploadImage(file.file)
+
+    // 3. 上传成功，拿到 URL 填入表单
+    createForm.image_url = res.url
+
+    // 4. 告诉 Naive UI 组件：“完事了，把进度条变绿”
+    onFinish()
+    message.success('上传成功')
+
+  } catch (error) {
+    // 5. 告诉组件：“挂了，把进度条变红”
+    onError()
+    message.error('上传失败，请检查网络或图片大小')
+  }
+}
+
+// 【修改】这个函数只负责同步文件列表的显示状态，不需要做业务逻辑了
 const handleUploadChange = (data: { fileList: UploadFileInfo[] }) => {
   fileList.value = data.fileList
-  // 这里是一个简单的模拟，实际需要调用后端上传接口获取 URL
-  if (data.fileList.length > 0) {
-    const file = data.fileList[0]
-    if (file.status === 'finished') {
-      // 假设后端返回的 URL 放在 file.url 里
-      // createForm.image_url = file.url
-      message.success('上传成功 (模拟)')
-      // 模拟设置一个图片地址
-      createForm.image_url = 'https://via.placeholder.com/300'
-    }
-  } else {
+
+  // 如果用户点击了删除图片（列表为空），要把表单里的 URL 也清空
+  if (data.length === 0) {
     createForm.image_url = ''
   }
 }
+
 // --- 分页状态管理 ---
 const pageSize = 8             // 每页显示多少条
 const currentPage = ref(1)     // 当前第几页（仅用于显示）
@@ -288,12 +318,51 @@ const handleNextPage = () => {
     loadMarket(true)
   }
 }
-// 提交发布表单
-const handleCreateSubmit = () => {
-  // 这里应该调用 api.createProduct(createForm)
-  console.log('提交表单:', createForm)
-  message.info('提交功能后端尚未实现')
-  showCreateModal.value = false
+const handleCreateSubmit = async () => {
+  // 1. 基础校验
+  if (!createForm.name || !createForm.price || !createForm.category_id) {
+    message.warning('请补全必填项 (名称、价格、分类)')
+    return
+  }
+
+  if (!createForm.image_url) {
+    message.warning('请先上传一张商品图片')
+    return
+  }
+
+  try {
+    submitting.value = true
+
+    // 2. 调用 API
+    await api.createProduct({
+        name: createForm.name,
+        description: createForm.description,
+        price: createForm.price,
+        category_id: createForm.category_id,
+        condition: createForm.condition,
+        image_url: createForm.image_url
+    })
+
+    message.success('发布成功！')
+    // 3. 收尾工作
+    showCreateModal.value = false // 关闭弹窗
+    resetForm() // 清空表单
+
+    // TODO: 这里通常需要触发一个事件，通知父组件刷新商品列表
+    // emit('refresh')
+    loadMarket()
+  } catch (error) {
+    // 错误处理交给了 api.ts 里的拦截器打印，这里只需要通过 catch 停住 loading 状态
+    // message.error('发布失败')
+  } finally {
+    submitting.value = false
+  }
+}
+
+// 重置表单辅助函数
+const resetForm = () => {
+  Object.assign(createForm, initialFormState)
+  fileList.value = [] // 清空上传组件的显示
 }
 
 // --- 业务逻辑 ---
@@ -335,6 +404,7 @@ const handleUserDropdown = (key: string) => {
   if (key === 'logout') {
     token.value = ''
     localStorage.removeItem('token')
+    localStorage.removeItem('user')
     message.success('已退出')
     // 强制刷新页面以更新状态
     window.location.reload()
@@ -440,7 +510,7 @@ onMounted(() => {
                       <n-tag size="small" :bordered="false">{{ item.condition }}</n-tag>
                     </n-space>
                     <n-tag v-if="item.user_rating_stat.review_count > 0" size="small" type="warning" :bordered="false">
-                      ⭐ {{ item.user_rating_stat.avg_rating.toFixed(1) }}  item.user_rating_stat.review_count 人评价
+                      卖家评分 ⭐ {{ item.user_rating_stat.avg_rating.toFixed(1) }}  共 {{ item.user_rating_stat.review_count }} 人评价
                     </n-tag>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
                       <span style="color: #f59e0b; font-size: 18px; font-weight: bold;">¥ {{ item.price }}</span>
@@ -505,19 +575,26 @@ onMounted(() => {
 
     <n-modal v-model:show="showCreateModal" preset="card" title="发布新商品" style="width: 600px;">
       <n-form ref="createFormRef" :model="createForm" label-placement="left" label-width="auto">
+
         <n-form-item label="商品名称" path="name">
           <n-input v-model:value="createForm.name" placeholder="例如：MacBook Pro M1" />
         </n-form-item>
         <n-form-item label="商品描述" path="description">
           <n-input v-model:value="createForm.description" type="textarea" placeholder="描述一下商品的细节、新旧程度等" />
         </n-form-item>
-        <n-grid cols="2" x-gap="12">
-          <n-form-item label="价格 (¥)" path="price">
-            <n-input-number v-model:value="createForm.price" :min="0" placeholder="0.00" style="width: 100%"/>
-          </n-form-item>
-          <n-form-item label="分类" path="category_id">
-            <n-select v-model:value="createForm.category_id" :options="categoryOptions" placeholder="选择分类" />
-          </n-form-item>
+        <n-grid cols="10" x-gap="12">
+          <n-form-item-gi :span="5" label="价格 (¥)" path="price">
+            <n-input-number
+                v-model:value="createForm.price"
+                :min="0"
+                placeholder="0.00"
+                style="width: 100%"
+            />
+          </n-form-item-gi>
+
+            <n-form-item-gi :span="5" label="分类" path="category_id">
+              <n-select v-model:value="createForm.category_id" :options="categoryOptions" />
+            </n-form-item-gi>
         </n-grid>
         <n-form-item label="成色" path="condition">
           <n-select v-model:value="createForm.condition" :options="conditionOptions" />
@@ -525,31 +602,37 @@ onMounted(() => {
 
         <n-form-item label="商品图片">
           <n-upload
-              multiple
-              directory-dnd
-              :max="1"
-              list-type="image"
-              :file-list="fileList"
-              @update:file-list="handleUploadChange"
-          action="/api/v1/upload/image"
+            :custom-request="handleCustomRequest"
+            @update:file-list="handleUploadChange"
+            :file-list="fileList"
+
+            directory-dnd
+            :max="1"
+            list-type="image"
           >
-          <n-upload-dragger>
-            <div style="margin-bottom: 12px">
-              <n-icon size="48" :depth="3"><CloudUploadOutline /></n-icon>
-            </div>
-            <n-text style="font-size: 16px">点击或者拖动图片到该区域来上传</n-text>
-            <n-p depth="3" style="margin: 8px 0 0 0">支持 JPG、PNG 格式，请勿上传敏感图片</n-p>
-          </n-upload-dragger>
+            <n-upload-dragger>
+              <div style="margin-bottom: 12px">
+                <n-icon size="48" :depth="3">
+                  <CloudUploadOutline />
+                </n-icon>
+              </div>
+              <n-text style="font-size: 16px">点击或者拖动图片到该区域来上传</n-text>
+              <p depth="3" style="margin: 8px 0 0 0">
+                支持 JPG、PNG 格式，建议小于 5MB
+              </p>
+            </n-upload-dragger>
           </n-upload>
         </n-form-item>
+
       </n-form>
       <template #footer>
         <n-space justify="end">
-          <n-button @click="showCreateModal = false">取消</n-button>
+          <n-button @click="() => { showCreateModal = false;resetForm() }">取消</n-button>
           <n-button type="primary" @click="handleCreateSubmit">确认发布</n-button>
         </n-space>
       </template>
     </n-modal>
+
     <n-modal v-model:show="showLoginModal" preset="card" style="width: 400px;">
       <n-tabs v-model:value="activeTab" justify-content="space-evenly" animated>
 

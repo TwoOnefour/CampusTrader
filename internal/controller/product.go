@@ -4,9 +4,10 @@ import (
 	"CampusTrader/internal/common/response"
 	"CampusTrader/internal/model"
 	"CampusTrader/internal/service"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 type ListResult[T any] struct {
@@ -99,7 +100,7 @@ func (c *ProductController) CreateProduct(ctx *gin.Context) {
 		response.Error(ctx, http.StatusInternalServerError, err.Error())
 		return
 	}
-
+	response.Success(ctx, nil)
 }
 
 func (c *ProductController) ListMyProducts(ctx *gin.Context) {
@@ -110,7 +111,7 @@ func (c *ProductController) ListMyProducts(ctx *gin.Context) {
 		return
 	}
 
-	response.Success(ctx, ListUserProductSearchResult{
+	response.Success(ctx, ListProductSearchResult{
 		List:  products,
 		Total: uint64(len(products)),
 		Page:  1,

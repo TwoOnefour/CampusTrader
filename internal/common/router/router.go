@@ -3,6 +3,7 @@ package router
 import (
 	"CampusTrader/internal/controller"
 	"CampusTrader/internal/middleware/auth"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -16,7 +17,7 @@ func InitRouter(
 ) *gin.Engine {
 	r := gin.Default()
 	r.Use(Cors()) // 跨域中间件
-
+	r.Static("/static", "./static")
 	// 建议统一使用 v1 版本组
 	v1 := r.Group("/api/v1")
 	{

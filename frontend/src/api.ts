@@ -77,6 +77,15 @@ export interface ProductListResp {
     size: number
 }
 
+export interface CreateProductReq {
+    name: string
+    description: string
+    price: number
+    category_id: number | null // 允许初始为空
+    condition: string
+    image_url: string
+}
+
 // --- API 方法导出 ---
 
 export const api = {
@@ -132,6 +141,15 @@ export const api = {
     // 对应 Go: orderGroup.POST("", ...) -> /api/v1/orders
     // 注意：后端这里是 privateGroup 下的 /orders 组
     createOrder: (itemId: number) => request.post('/orders', { item_id: itemId }),
+
+    createProduct: (data: CreateProductReq) => request.post('/products', data),
+
+    uploadImage: (file: File) => {
+        const formData = new FormData()
+        formData.append('file', file)
+        return request.post<{ url: string }>('/images', formData)
+    }
+
 }
 
 export interface RegisterReq {

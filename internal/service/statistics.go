@@ -3,6 +3,7 @@ package service
 import (
 	"CampusTrader/internal/model"
 	"context"
+
 	"gorm.io/gorm"
 )
 
@@ -66,24 +67,19 @@ func (s *StatisticsService) GetHotCategories(ctx context.Context) ([]model.Categ
 	return categories, nil
 }
 
-func (s *StatisticsService) GetUserRating(ctx context.Context, userId uint64) (float64, error) {
-	type Result struct {
-		Rating float64
-	}
-	var res Result
+func (s *StatisticsService) GetUserRating(ctx context.Context, userId uint64) (*model.RatingStat, error) {
+	var res model.RatingStat
 	// 很坑，我本来写的sum(if(rating > 3, 1, 0) / count(*)，但该用户没有评价记录的时候会返回null，导致gorm报错，只能换成下面这样
-	sql := `
-       SELECT 
-          IFNULL(AVG(rating > 3), -1) AS rating 
-       FROM reviews 
-       WHERE target_user_id = ?
-    `
+	err := s.db.WithContext(ctx).Table("reviews").
+		Select("target_user_id, IFNULL(AVG(rating), 0) as avg_rating, count(*) as review_count").
+		Where("target_user_id = ?", userId). // 直接传切片，不需要手动拼接
+		Group("target_user_id").
+		Scan(&res).Error // Scan 会把结果集映射到 results 切片中
 
-	if err := s.db.WithContext(ctx).Raw(sql, userId).Scan(&res).Error; err != nil {
-		return 0, err
+	if err != nil {
+		return nil, err
 	}
-
-	return res.Rating, nil
+	return &res, nil
 }
 
 func (s *StatisticsService) BatchGetUserRating(ctx context.Context, userIds []uint64) (map[uint64]model.RatingStat, error) {

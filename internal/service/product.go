@@ -4,9 +4,10 @@ import (
 	"CampusTrader/internal/model"
 	"context"
 	"errors"
-	"gorm.io/gorm"
 	"log"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type ProductService struct {
@@ -52,11 +53,16 @@ func (s *ProductService) ListProducts(ctx context.Context, pageSize, lastID uint
 	if err != nil {
 		return nil, err
 	}
-	productIDs := make([]uint64, len(products))
-	for i, p := range products {
-		productIDs[i] = p.Id
+	UserIDs := make([]uint64, 0)
+	UserIDSet := make(map[uint64]struct{}) // 去重
+	for _, p := range products {
+		if _, ok := UserIDSet[p.SellerId]; ok {
+			continue
+		}
+		UserIDs = append(UserIDs, p.SellerId)
+		UserIDSet[p.SellerId] = struct{}{}
 	}
-	ratings, err := s.statService.BatchGetUserRating(ctx, productIDs)
+	ratings, err := s.statService.BatchGetUserRating(ctx, UserIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -65,22 +71,32 @@ func (s *ProductService) ListProducts(ctx context.Context, pageSize, lastID uint
 		productsWithRatings[i] = model.ProductWithUserRating{
 			Product: p,
 		}
-		productsWithRatings[i].RatingStat.TargetUserID = p.Id
-		if stat, ok := ratings[p.Id]; ok {
+		if stat, ok := ratings[p.SellerId]; ok {
 			productsWithRatings[i].RatingStat = stat
 		}
 	}
 	return productsWithRatings, err
 }
 
-func (s *ProductService) ListMyProducts(ctx context.Context, sellerID uint64) ([]model.Product, error) {
+func (s *ProductService) ListMyProducts(ctx context.Context, sellerID uint64) ([]model.ProductWithUserRating, error) {
 	var products []model.Product
 	err := s.db.WithContext(ctx).
 		Model(&model.Product{}).
 		Where("seller_id = ?", sellerID).
 		Order("created_at DESC"). // 按时间倒序
 		Find(&products).Error
-	return products, err
+	rating, err := s.statService.GetUserRating(ctx, sellerID)
+	if err != nil {
+		return nil, err
+	}
+	productsWithRatings := make([]model.ProductWithUserRating, len(products))
+	for i, p := range products {
+		productsWithRatings[i] = model.ProductWithUserRating{
+			Product:    p,
+			RatingStat: *rating,
+		}
+	}
+	return productsWithRatings, err
 }
 
 func (s *ProductService) SearchProduct(ctx context.Context, keyword string, count uint64) ([]model.Product, error) {
