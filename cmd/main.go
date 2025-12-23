@@ -6,14 +6,15 @@ import (
 	"CampusTrader/internal/common/storage"
 	"CampusTrader/internal/controller"
 	"CampusTrader/internal/service"
-	"github.com/joho/godotenv"
 	"log"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
 	err := godotenv.Load(".env")
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Println("Error loading .env file")
 	}
 	database.InitMySQL()
 
@@ -35,5 +36,4 @@ func main() {
 		controller.NewCategoryController(categoryService),
 	)
 	r.Run(":8080")
-
 }
