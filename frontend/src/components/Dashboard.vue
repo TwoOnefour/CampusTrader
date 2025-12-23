@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { h, ref, onMounted, computed, Component, reactive } from 'vue'
+import { h, ref, onMounted, computed, Component, reactive,  } from 'vue'
 import { api, type Product } from '../api'
 import {
   NLayout, NLayoutSider, NLayoutHeader, NLayoutContent, NMenu,
@@ -10,10 +10,10 @@ import {
   type AutoCompleteOption,
   type UploadFileInfo,
 } from 'naive-ui'
-// 引入图标
+
 import {
   BagHandleOutline, PersonOutline, LogOutOutline,
-  CartOutline, AddCircleOutline, SearchOutline, CloudUploadOutline,FlameOutline
+  CartOutline, AddCircleOutline, SearchOutline, CloudUploadOutline,FlameOutline,MenuOutline
 } from '@vicons/ionicons5'
 // import { CloudUpload } from '@vicons/fa'
 
@@ -30,7 +30,7 @@ const products = ref<Product[]>([])
 const searchKeyword = ref('')
 // 存放下拉框的选项，格式必须是 { label: '显示文字', value: '选中后的值' }
 const searchOptions = ref<AutoCompleteOption[]>([])
-
+const collapsed = ref(false)
 // 简单的防抖定时器，防止请求太频繁
 let searchTimer: any = null
 
@@ -369,11 +369,15 @@ const resetForm = () => {
 
 const handleMenuUpdate = (key: string) => {
   const option = allMenuOptions.find(o => o.key === key)
+
   if (option?.requiresAuth && !token.value) {
     message.warning('请先登录')
     return
   }
-
+  currentView.value = value
+  if (window.innerWidth < 768) {
+    collapsed.value = true // 手机端点击菜单后自动收回
+  }
   if (key === 'create') {
     showCreateModal.value = true
     return
@@ -431,20 +435,40 @@ const handleBuy = async (id: number) => {
 }
 
 onMounted(() => {
+  if (window.innerWidth < 768) {
+    collapsed.value = true
+  }
   loadMarket()
 })
 </script>
 
 <template>
   <n-layout position="absolute" has-sider>
-    <n-layout-sider bordered width="240" content-style="padding: 24px;" :native-scrollbar="false">
+    <div class="mobile-menu-btn" @click="collapsed = !collapsed">
+      <n-icon size="28"><MenuOutline /></n-icon>
+    </div>
+
+    <n-layout-sider
+        bordered
+        collapse-mode="transform"
+        :collapsed-width="0"
+        :width="240"
+        :collapsed="collapsed"
+        show-trigger="bar"
+        @collapse="collapsed = true"
+        @expand="collapsed = false"
+        :native-scrollbar="false"
+    style="z-index: 100"
+    >
+    <div style="padding: 24px;">
       <div style="margin-bottom: 30px; display: flex; align-items: center; gap: 10px;">
         <n-icon size="30" color="#18a058"><CartOutline /></n-icon>
         <span style="font-size: 18px; font-weight: bold; color: #333;">CampusTrader</span>
       </div>
       <n-menu :options="menuOptions" :value="currentView" @update:value="handleMenuUpdate" />
+    </div>
     </n-layout-sider>
-
+    
     <n-layout>
       <n-layout-header bordered style="height: 64px; display: flex; align-items: center; padding: 0 24px; justify-content: space-between;">
 

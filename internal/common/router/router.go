@@ -1,8 +1,11 @@
 package router
 
 import (
+	"CampusTrader/internal/assets"
 	"CampusTrader/internal/controller"
 	"CampusTrader/internal/middleware/auth"
+	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,7 +20,7 @@ func InitRouter(
 ) *gin.Engine {
 	r := gin.Default()
 	r.Use(Cors()) // 跨域中间件
-	r.Static("/static", "./static")
+
 	// 建议统一使用 v1 版本组
 	v1 := r.Group("/api/v1")
 	{
@@ -68,7 +71,16 @@ func InitRouter(
 			privateGroup.POST("/images", imageCtrl.Upload)
 		}
 	}
-
+	staticFS := assets.GetFileSystem()
+	fileServer := http.FileServer(http.FS(staticFS))
+	r.Static("/static", "./static")
+	r.NoRoute(func(c *gin.Context) {
+		if !strings.HasPrefix(c.Request.URL.Path, "/api") || strings.HasPrefix(c.Request.URL.Path, "/static") {
+			fileServer.ServeHTTP(c.Writer, c.Request)
+			return
+		}
+		c.JSON(404, gin.H{"code": 404, "msg": "Not Found"})
+	})
 	return r
 }
 
