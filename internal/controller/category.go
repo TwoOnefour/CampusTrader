@@ -4,8 +4,9 @@ import (
 	"CampusTrader/internal/common/response"
 	"CampusTrader/internal/model"
 	"CampusTrader/internal/service"
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 type listCategoryResult struct {

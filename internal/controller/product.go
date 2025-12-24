@@ -5,6 +5,7 @@ import (
 	"CampusTrader/internal/model"
 	"CampusTrader/internal/service"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -15,11 +16,6 @@ type ListResult[T any] struct {
 	Total uint64 `json:"total"`
 	Page  uint64 `json:"page"`
 	Size  uint64 `json:"size"`
-}
-
-type ListProductSearchParams struct {
-	LastId   uint64 `form:"last_id,default=0"`
-	PageSize uint64 `form:"page_size,default=50"`
 }
 
 type ListProductSearchResult = ListResult[model.ProductWithUserRating]
@@ -60,12 +56,34 @@ func NewProductController(productSvc *service.ProductService, statsSvc *service.
 
 // ListProducts GET /api/v1/product/list no login needed params: { "lastId": 123, "pageSize": 10 }
 func (c *ProductController) ListProducts(ctx *gin.Context) {
-	var req ListProductSearchParams
+	var req model.PageParam
 	if err := ctx.ShouldBindQuery(&req); err != nil {
 		response.Error(ctx, http.StatusBadRequest, err.Error())
 		return
 	}
-	products, err := c.productSvc.ListProducts(ctx, req.PageSize, req.LastId)
+	categoryId := ctx.Query("category")
+
+	if categoryId != "" {
+		var uintId uint64
+		uintId, err := strconv.ParseUint(categoryId, 10, 64)
+		if err != nil {
+			response.Error(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+		products, err := c.productSvc.ListProductsByProc(ctx, uintId, req)
+		if err != nil {
+			response.Error(ctx, http.StatusInternalServerError, err.Error())
+			return
+		}
+		response.Success(ctx, ListProductSearchResult{
+			List:  products,
+			Total: uint64(len(products)),
+			Size:  req.PageSize,
+		})
+		return
+	}
+
+	products, err := c.productSvc.ListProducts(ctx, req)
 	if err != nil {
 		response.Error(ctx, http.StatusInternalServerError, err.Error())
 		return
@@ -105,12 +123,16 @@ func (c *ProductController) CreateProduct(ctx *gin.Context) {
 
 func (c *ProductController) ListMyProducts(ctx *gin.Context) {
 	userID := ctx.GetUint("userID")
-	products, err := c.productSvc.ListMyProducts(ctx, uint64(userID))
+	var req model.PageParam
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		response.Error(ctx, http.StatusBadRequest, err.Error())
+		return
+	}
+	products, err := c.productSvc.ListMyProducts(ctx, uint64(userID), req)
 	if err != nil {
 		response.Error(ctx, http.StatusInternalServerError, err.Error())
 		return
 	}
-
 	response.Success(ctx, ListProductSearchResult{
 		List:  products,
 		Total: uint64(len(products)),

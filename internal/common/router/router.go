@@ -39,11 +39,8 @@ func InitRouter(
 
 		productGroup := v1.Group("/products")
 		{
-
 			productGroup.GET("", productCtrl.ListProducts)
-
 			productGroup.GET("/search", productCtrl.SearchProducts)
-
 			productGroup.GET("/suggestion", productCtrl.SearchProductsSuggestion)
 		}
 

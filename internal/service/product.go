@@ -16,6 +16,15 @@ type ProductService struct {
 	statService *StatisticsService
 }
 
+func paginate(p model.PageParam) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		if p.LastId > 0 {
+			db = db.Where("id < ?", p.LastId)
+		}
+		return db.Order("id DESC").Limit(int(p.PageSize))
+	}
+}
+
 func NewProductService(db *gorm.DB, logService *LogService, statService *StatisticsService) *ProductService {
 	return &ProductService{
 		db:          db,
@@ -41,15 +50,11 @@ func (s *ProductService) CreateProduct(ctx context.Context, req *model.Product) 
 	return nil
 }
 
-func (s *ProductService) ListProducts(ctx context.Context, pageSize, lastID uint64) ([]model.ProductWithUserRating, error) {
+func (s *ProductService) ListProducts(ctx context.Context, pageParam model.PageParam) ([]model.ProductWithUserRating, error) {
 	db := s.db.WithContext(ctx).Model(&model.Product{}).Where("status = ?", "available")
-	if lastID > 0 {
-		db = db.Where("id < ?", lastID)
-	}
+	db = paginate(pageParam)(db)
 	var products []model.Product
-	err := db.Order("id DESC").
-		Limit(int(pageSize)).
-		Find(&products).Error
+	err := db.Find(&products).Error
 	if err != nil {
 		return nil, err
 	}
@@ -98,13 +103,15 @@ func (s *ProductService) ListProducts(ctx context.Context, pageSize, lastID uint
 	return productsWithRatings, err
 }
 
-func (s *ProductService) ListMyProducts(ctx context.Context, sellerID uint64) ([]model.ProductWithUserRating, error) {
+func (s *ProductService) ListMyProducts(ctx context.Context, sellerID uint64, pageParam model.PageParam) ([]model.ProductWithUserRating, error) {
 	var products []model.Product
-	err := s.db.WithContext(ctx).
+	db := s.db.WithContext(ctx).
 		Model(&model.Product{}).
 		Where("seller_id = ?", sellerID).
-		Order("created_at DESC"). // 按时间倒序
-		Find(&products).Error
+		Order("created_at DESC")
+	db = paginate(pageParam)(db)
+	err := db. // 按时间倒序
+			Find(&products).Error
 	rating, err := s.statService.GetUserRating(ctx, sellerID)
 	if err != nil {
 		return nil, err
@@ -117,6 +124,39 @@ func (s *ProductService) ListMyProducts(ctx context.Context, sellerID uint64) ([
 		}
 	}
 	return productsWithRatings, err
+}
+
+func (s *ProductService) ListProductsByProc(ctx context.Context, categoryID uint64, pageParam model.PageParam) ([]model.ProductWithUserRating, error) {
+	var products []model.Product
+	db := s.db.WithContext(ctx)
+	db = paginate(pageParam)(db)
+	err := db.Raw("CALL sp_search_and_count_by_category(?)", categoryID).Scan(&products).Error
+	if err != nil {
+		return nil, err
+	}
+	UserIDs := make([]uint64, 0)
+	UserIDSet := make(map[uint64]struct{}) // 去重
+	for _, p := range products {
+		if _, ok := UserIDSet[p.SellerId]; ok {
+			continue
+		}
+		UserIDs = append(UserIDs, p.SellerId)
+		UserIDSet[p.SellerId] = struct{}{}
+	}
+	ratings, err := s.statService.BatchGetUserRating(ctx, UserIDs)
+	if err != nil {
+		return nil, err
+	}
+	productsWithRatings := make([]model.ProductWithUserRating, len(products))
+	for i, p := range products {
+		productsWithRatings[i] = model.ProductWithUserRating{
+			Product: p,
+		}
+		if stat, ok := ratings[p.SellerId]; ok {
+			productsWithRatings[i].RatingStat = stat
+		}
+	}
+	return productsWithRatings, nil
 }
 
 func (s *ProductService) SearchProduct(ctx context.Context, keyword string, count uint64) ([]model.Product, error) {

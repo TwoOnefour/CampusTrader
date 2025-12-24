@@ -10,9 +10,9 @@
 目前已经实现：
 - 用户登录/注册及接口鉴权
 - 购买/发布商品
-- 商品+好评率显示 （业务内两次分查询实现，而非视图或复杂查询）
+- 流式分页查询 商品+好评率显示 （业务内两次分查询实现，而非视图或复杂查询）
 - 最热门分类 （复杂查询）
-- 模糊查询
+- 模糊查询 (甚至有搜索建议)
 - 业务层商品下架或交易完成log记录（非数据库触发器）
 
 未实现：
@@ -125,3 +125,38 @@ create or replace view v_product as
 > 要求6、前端界面：开发简单的图形界面，实现核心数据的增删改查和关键业务查询功能。
 
 叽里咕噜说什么呢，跟我的ai说去吧
+
+
+### 难点4
+存储过程
+
+分类查询
+```
+CREATE PROCEDURE sp_search_and_count_by_category(
+    IN p_keyword VARCHAR(100), 
+    IN p_category_id BIGINT UNSIGNED,
+    OUT p_total_count INT
+)
+BEGIN
+    -- 获取总数
+    SELECT COUNT(*) INTO p_total_count FROM products 
+    WHERE name LIKE CONCAT('%', p_keyword, '%') AND category_id = p_category_id AND status = 'available';
+    -- 获取结果
+    SELECT * FROM products 
+    WHERE name LIKE CONCAT('%', p_keyword, '%') AND category_id = p_category_id AND status = 'available'
+    ORDER BY created_at DESC;
+END;
+```
+
+更新卖出产品
+
+```
+CREATE PROCEDURE sp_complete_order(IN p_order_id BIGINT UNSIGNED)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION ROLLBACK;
+    START TRANSACTION;
+        UPDATE orders SET status = 'completed', completed_at = NOW() WHERE id = p_order_id;
+        UPDATE products SET status = 'sold' WHERE id = (SELECT product_id FROM orders WHERE id = p_order_id);
+    COMMIT;
+END;
+```

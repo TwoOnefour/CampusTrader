@@ -44,3 +44,8 @@ type ProductDropLogs struct {
 	Reason     string    `gorm:"column:reason;type:VARCHAR(255);comment:下架原因;" json:"reason"`                        // 下架原因
 	CreatedAt  time.Time `gorm:"column:created_at;type:TIMESTAMP;default:CURRENT_TIMESTAMP;" json:"created_at"`
 }
+
+type PageParam struct {
+	LastId   uint64 `form:"last_id,default=0"`
+	PageSize uint64 `form:"page_size,default=50"`
+}

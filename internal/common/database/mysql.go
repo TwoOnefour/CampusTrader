@@ -68,4 +68,50 @@ func InitMySQL() {
 	if err := DB.AutoMigrate(allModels...); err != nil {
 		return
 	}
+	initAdvancedObjects(DB)
+}
+
+func initAdvancedObjects(db *gorm.DB) {
+	viewProductDetails := `
+	CREATE OR REPLACE VIEW v_product_details AS
+	SELECT 
+		p.*, 
+		c.name AS category_name, 
+		u.nickname AS seller_nickname
+	FROM products p
+	JOIN categories c ON p.category_id = c.id
+	JOIN users u ON p.user_id = u.user_id;`
+	viewUserTradeSummary := `
+	CREATE OR REPLACE VIEW v_user_trade_summary AS
+	SELECT 
+		u.user_id, u.username, u.nickname,
+		(SELECT COUNT(*) FROM products WHERE seller_id = u.user_id) AS total_listed,
+		(SELECT SUM(amount) FROM orders WHERE seller_id = u.user_id AND status = 'completed') AS total_sales_amount
+	FROM users u;`
+
+	procCompleteOrder := `
+	DROP PROCEDURE IF EXISTS sp_complete_order;
+	CREATE PROCEDURE sp_complete_order(IN p_order_id BIGINT UNSIGNED)
+	BEGIN
+		UPDATE orders SET status = 'completed', updated_at = NOW() WHERE id = p_order_id;
+		UPDATE products SET status = 'sold' WHERE id = (SELECT product_id FROM orders WHERE id = p_order_id);
+	END;`
+
+	procSearchCount := `
+	DROP PROCEDURE IF EXISTS sp_search_and_count_by_category;
+	CREATE PROCEDURE sp_search_and_count_by_category(
+		IN p_category_id BIGINT UNSIGNED
+	)
+	BEGIN
+		SELECT * FROM products
+		AND category_id = p_category_id 
+		AND status = 'available';
+	END;`
+
+	objects := []string{viewProductDetails, viewUserTradeSummary, procCompleteOrder, procSearchCount}
+	for _, sql := range objects {
+		if err := db.Exec(sql).Error; err != nil {
+			log.Printf("创建数据库对象失败: %v", err)
+		}
+	}
 }
