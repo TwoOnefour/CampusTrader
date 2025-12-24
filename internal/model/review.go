@@ -4,6 +4,9 @@ import "time"
 
 type Review struct {
 	Id           uint64    `gorm:"column:id;type:BIGINT UNSIGNED;primaryKey;" json:"id"`
+	Order        Order     `gorm:"foreignKey:OrderId" json:"order,omitempty"`
+	Reviewer     User      `gorm:"foreignKey:ReviewerId" json:"reviewer,omitempty"`
+	TargetUser   User      `gorm:"foreignKey:TargetUserId" json:"target_user,omitempty"`
 	OrderId      uint64    `gorm:"column:order_id;type:BIGINT UNSIGNED;not null;" json:"order_id"`
 	ReviewerId   uint64    `gorm:"column:reviewer_id;type:BIGINT UNSIGNED;comment:评价人;not null;" json:"reviewer_id"`        // 评价人
 	TargetUserId uint64    `gorm:"column:target_user_id;type:BIGINT UNSIGNED;comment:被评价人;not null;" json:"target_user_id"` // 被评价人

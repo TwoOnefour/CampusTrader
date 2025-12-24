@@ -2,6 +2,7 @@ package service
 
 import (
 	"CampusTrader/internal/model"
+
 	"gorm.io/gorm"
 )
 
@@ -19,9 +20,9 @@ func (s *LogService) OnOrder(order *model.Order) error {
 	db := s.db.Model(&model.ProductSoldLog{})
 
 	return db.Create(&model.ProductSoldLog{
-		ProductId: order.ProductId,
-		BuyerId:   order.BuyerId,
-		SellerId:  order.SellerId,
+		ProductId: order.Product.Id,
+		BuyerId:   order.Buyer.ID,
+		SellerId:  order.Seller.ID,
 		Price:     order.Amount,
 	}).Error
 }

@@ -540,7 +540,7 @@ onMounted(() => {
                       <n-tag size="small" :bordered="false">{{ item.condition }}</n-tag>
                     </n-space>
                     <n-tag v-if="item.user_rating_stat.review_count > 0" size="small" type="warning" :bordered="false">
-                      卖家评分 ⭐ {{ item.user_rating_stat.avg_rating.toFixed(1) }}  共 {{ item.user_rating_stat.review_count }} 人评价
+                      卖家评分 ⭐ {{ item.user_rating_stat.avg_rating.toFixed(1) }}  共 {{ item.user_rating_stat.review_count }} 条评价
                     </n-tag>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
                       <span style="color: #f59e0b; font-size: 18px; font-weight: bold;">¥ {{ item.price }}</span>
