@@ -11,16 +11,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type ListResult[T any] struct {
-	List  []T    `json:"list"`
-	Total uint64 `json:"total"`
-	Page  uint64 `json:"page"`
-	Size  uint64 `json:"size"`
-}
+type ListProductSearchResult = model.PageData[model.ProductWithUserRating]
 
-type ListProductSearchResult = ListResult[model.ProductWithUserRating]
-
-type ListUserProductSearchResult = ListResult[model.Product]
+type ListUserProductSearchResult = model.PageData[model.Product]
 
 type SearchProductParams struct {
 	Keyword string `form:"keyword"`
@@ -75,11 +68,7 @@ func (c *ProductController) ListProducts(ctx *gin.Context) {
 			response.Error(ctx, http.StatusInternalServerError, err.Error())
 			return
 		}
-		response.Success(ctx, ListProductSearchResult{
-			List:  products,
-			Total: uint64(len(products)),
-			Size:  req.PageSize,
-		})
+		response.Success(ctx, products)
 		return
 	}
 
@@ -89,11 +78,7 @@ func (c *ProductController) ListProducts(ctx *gin.Context) {
 		return
 	}
 
-	response.Success(ctx, ListProductSearchResult{
-		List:  products,
-		Total: uint64(len(products)),
-		Size:  req.PageSize,
-	})
+	response.Success(ctx, products)
 }
 
 // CreateProduct POST /api/v1/product/create should login eq
@@ -133,12 +118,7 @@ func (c *ProductController) ListMyProducts(ctx *gin.Context) {
 		response.Error(ctx, http.StatusInternalServerError, err.Error())
 		return
 	}
-	response.Success(ctx, ListProductSearchResult{
-		List:  products,
-		Total: uint64(len(products)),
-		Page:  1,
-		Size:  uint64(len(products)),
-	})
+	response.Success(ctx, products)
 }
 
 func (c *ProductController) SearchProducts(ctx *gin.Context) {
@@ -157,8 +137,7 @@ func (c *ProductController) SearchProducts(ctx *gin.Context) {
 		return
 	}
 	response.Success(ctx, ListUserProductSearchResult{
-		List:  products,
-		Total: uint64(len(products)),
+		List: products,
 	})
 }
 

@@ -1,5 +1,5 @@
 
-.PHONY: build-ui build-go build pack clean
+.PHONY: build-ui build-go pack upload restart clean
 
 # 变量定义
 UI_DIR = frontend
@@ -13,7 +13,7 @@ REMOTE_PATH = /opt/campustrader
 TARGET_FILE = campustrader.tar.gz
 
 # 1. 完整构建：先做前端，再做后端
-build: build-ui build-go pack
+build: build-ui build-go pack upload restart clean
 
 # 2. 编译前端
 build-ui:
@@ -44,3 +44,5 @@ upload:
 clean:
 	rm -f $(BINARY_NAME)
 	rm -rf $(ASSETS_DIR)/*
+	rm -rf campustrader.tar.gz
+	ssh -p $(REMOTE_PORT) $(REMOTE_ADDR) 'cd $(REMOTE_PATH) && rm -rf $(TARGET_FILE)'

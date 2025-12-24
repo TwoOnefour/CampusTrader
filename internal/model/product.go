@@ -49,3 +49,9 @@ type PageParam struct {
 	LastId   uint64 `form:"last_id,default=0"`
 	PageSize uint64 `form:"page_size,default=50"`
 }
+
+type PageData[T any] struct {
+	List    []T    `json:"list"`
+	HasMore bool   `json:"has_more"`
+	LastId  uint64 `json:"last_id"`
+}

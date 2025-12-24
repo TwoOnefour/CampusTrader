@@ -21,7 +21,7 @@ func paginate(p model.PageParam) func(db *gorm.DB) *gorm.DB {
 		if p.LastId > 0 {
 			db = db.Where("id < ?", p.LastId)
 		}
-		return db.Order("id DESC").Limit(int(p.PageSize))
+		return db.Order("id DESC")
 	}
 }
 
@@ -50,14 +50,7 @@ func (s *ProductService) CreateProduct(ctx context.Context, req *model.Product) 
 	return nil
 }
 
-func (s *ProductService) ListProducts(ctx context.Context, pageParam model.PageParam) ([]model.ProductWithUserRating, error) {
-	db := s.db.WithContext(ctx).Model(&model.Product{}).Where("status = ?", "available")
-	db = paginate(pageParam)(db)
-	var products []model.Product
-	err := db.Find(&products).Error
-	if err != nil {
-		return nil, err
-	}
+func (s *ProductService) ListProducts(ctx context.Context, pageParam model.PageParam) (*model.PageData[model.ProductWithUserRating], error) {
 	//sql := `
 	//	create or replace view v_product as
 	//		select
@@ -78,10 +71,27 @@ func (s *ProductService) ListProducts(ctx context.Context, pageParam model.PageP
 	//	select * from v_product;
 	//`
 	// 这里可以用这个view，但我直接分查了
-	return getUserRatingsByProducts(ctx, s.statService, products)
+	db := s.db.WithContext(ctx).Model(&model.Product{}).Where("status = ?", "available")
+	db = paginate(pageParam)(db)
+	var products []model.Product
+	err := db.Limit(int(pageParam.PageSize + 1)).Find(&products).Error
+	if err != nil {
+		return nil, err
+	}
+	type resType = model.PageData[model.ProductWithUserRating]
+	var res resType
+	productWithRating, err := getUserRatingsByProducts(ctx, s.statService, products)
+	if err != nil {
+		return nil, err
+	}
+	res = resType{
+		List:    productWithRating,
+		HasMore: true,
+	}
+	return &res, nil
 }
 
-func (s *ProductService) ListMyProducts(ctx context.Context, sellerID uint64, pageParam model.PageParam) ([]model.ProductWithUserRating, error) {
+func (s *ProductService) ListMyProducts(ctx context.Context, sellerID uint64, pageParam model.PageParam) (*model.PageData[model.ProductWithUserRating], error) {
 	var products []model.Product
 	db := s.db.WithContext(ctx).
 		Model(&model.Product{}).
@@ -91,10 +101,20 @@ func (s *ProductService) ListMyProducts(ctx context.Context, sellerID uint64, pa
 	if err := db.Find(&products).Error; err != nil {
 		return nil, err
 	}
-	return getUserRatingsByProducts(ctx, s.statService, products)
+	type resType = model.PageData[model.ProductWithUserRating]
+	var res resType
+	productWithRating, err := getUserRatingsByProducts(ctx, s.statService, products)
+	if err != nil {
+		return nil, err
+	}
+	res = resType{
+		List:    productWithRating,
+		HasMore: true,
+	}
+	return &res, nil
 }
 
-func (s *ProductService) ListProductsByProc(ctx context.Context, categoryID uint64, pageParam model.PageParam) ([]model.ProductWithUserRating, error) {
+func (s *ProductService) ListProductsByProc(ctx context.Context, categoryID uint64, pageParam model.PageParam) (*model.PageData[model.ProductWithUserRating], error) {
 	var products []model.Product
 	db := s.db.WithContext(ctx)
 	db = paginate(pageParam)(db)
@@ -102,7 +122,17 @@ func (s *ProductService) ListProductsByProc(ctx context.Context, categoryID uint
 	if err != nil {
 		return nil, err
 	}
-	return getUserRatingsByProducts(ctx, s.statService, products)
+	type resType = model.PageData[model.ProductWithUserRating]
+	var res resType
+	productWithRating, err := getUserRatingsByProducts(ctx, s.statService, products)
+	if err != nil {
+		return nil, err
+	}
+	res = resType{
+		List:    productWithRating,
+		HasMore: true,
+	}
+	return &res, nil
 }
 
 func (s *ProductService) SearchProduct(ctx context.Context, keyword string, count uint64) ([]model.Product, error) {
