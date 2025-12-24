@@ -58,15 +58,6 @@ func (s *ProductService) ListProducts(ctx context.Context, pageParam model.PageP
 	if err != nil {
 		return nil, err
 	}
-	UserIDs := make([]uint64, 0)
-	UserIDSet := make(map[uint64]struct{}) // 去重
-	for _, p := range products {
-		if _, ok := UserIDSet[p.SellerId]; ok {
-			continue
-		}
-		UserIDs = append(UserIDs, p.SellerId)
-		UserIDSet[p.SellerId] = struct{}{}
-	}
 	//sql := `
 	//	create or replace view v_product as
 	//		select
@@ -87,20 +78,7 @@ func (s *ProductService) ListProducts(ctx context.Context, pageParam model.PageP
 	//	select * from v_product;
 	//`
 	// 这里可以用这个view，但我直接分查了
-	ratings, err := s.statService.BatchGetUserRating(ctx, UserIDs)
-	if err != nil {
-		return nil, err
-	}
-	productsWithRatings := make([]model.ProductWithUserRating, len(products))
-	for i, p := range products {
-		productsWithRatings[i] = model.ProductWithUserRating{
-			Product: p,
-		}
-		if stat, ok := ratings[p.SellerId]; ok {
-			productsWithRatings[i].RatingStat = stat
-		}
-	}
-	return productsWithRatings, err
+	return getUserRatingsByProducts(ctx, s.statService, products)
 }
 
 func (s *ProductService) ListMyProducts(ctx context.Context, sellerID uint64, pageParam model.PageParam) ([]model.ProductWithUserRating, error) {
@@ -111,19 +89,8 @@ func (s *ProductService) ListMyProducts(ctx context.Context, sellerID uint64, pa
 		Order("created_at DESC")
 	db = paginate(pageParam)(db)
 	err := db. // 按时间倒序
-			Find(&products).Error
-	rating, err := s.statService.GetUserRating(ctx, sellerID)
-	if err != nil {
-		return nil, err
-	}
-	productsWithRatings := make([]model.ProductWithUserRating, len(products))
-	for i, p := range products {
-		productsWithRatings[i] = model.ProductWithUserRating{
-			Product:    p,
-			RatingStat: *rating,
-		}
-	}
-	return productsWithRatings, err
+		Find(&products).Error
+	return getUserRatingsByProducts(ctx, s.statService, products)
 }
 
 func (s *ProductService) ListProductsByProc(ctx context.Context, categoryID uint64, pageParam model.PageParam) ([]model.ProductWithUserRating, error) {
@@ -134,29 +101,7 @@ func (s *ProductService) ListProductsByProc(ctx context.Context, categoryID uint
 	if err != nil {
 		return nil, err
 	}
-	UserIDs := make([]uint64, 0)
-	UserIDSet := make(map[uint64]struct{}) // 去重
-	for _, p := range products {
-		if _, ok := UserIDSet[p.SellerId]; ok {
-			continue
-		}
-		UserIDs = append(UserIDs, p.SellerId)
-		UserIDSet[p.SellerId] = struct{}{}
-	}
-	ratings, err := s.statService.BatchGetUserRating(ctx, UserIDs)
-	if err != nil {
-		return nil, err
-	}
-	productsWithRatings := make([]model.ProductWithUserRating, len(products))
-	for i, p := range products {
-		productsWithRatings[i] = model.ProductWithUserRating{
-			Product: p,
-		}
-		if stat, ok := ratings[p.SellerId]; ok {
-			productsWithRatings[i].RatingStat = stat
-		}
-	}
-	return productsWithRatings, nil
+	return getUserRatingsByProducts(ctx, s.statService, products)
 }
 
 func (s *ProductService) SearchProduct(ctx context.Context, keyword string, count uint64) ([]model.Product, error) {
@@ -196,4 +141,30 @@ func (s *ProductService) DropProduct(ctx context.Context, productId, operatorId 
 	}
 	go notifyLogging()
 	return nil
+}
+
+func getUserRatingsByProducts(ctx context.Context, s *StatisticsService, products []model.Product) ([]model.ProductWithUserRating, error) {
+	UserIDs := make([]uint64, 0)
+	UserIDSet := make(map[uint64]struct{}) // 去重
+	for _, p := range products {
+		if _, ok := UserIDSet[p.SellerId]; ok {
+			continue
+		}
+		UserIDs = append(UserIDs, p.SellerId)
+		UserIDSet[p.SellerId] = struct{}{}
+	}
+	ratings, err := s.BatchGetUserRating(ctx, UserIDs)
+	if err != nil {
+		return nil, err
+	}
+	productsWithRatings := make([]model.ProductWithUserRating, len(products))
+	for i, p := range products {
+		productsWithRatings[i] = model.ProductWithUserRating{
+			Product: p,
+		}
+		if stat, ok := ratings[p.SellerId]; ok {
+			productsWithRatings[i].RatingStat = stat
+		}
+	}
+	return productsWithRatings, nil
 }
