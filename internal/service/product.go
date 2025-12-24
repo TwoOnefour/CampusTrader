@@ -62,6 +62,26 @@ func (s *ProductService) ListProducts(ctx context.Context, pageSize, lastID uint
 		UserIDs = append(UserIDs, p.SellerId)
 		UserIDSet[p.SellerId] = struct{}{}
 	}
+	//sql := `
+	//	create or replace view v_product as
+	//		select
+	//			products.*, users.nickname,
+	//			users.phone,
+	//			IFNULL(t.avg_rating, 0),
+	//			IFNULL(t.review_count, 0)
+	//		from products
+	//		join users on products.seller_id = users.id
+	//		LEFT JOIN (
+	//			SELECT
+	//				target_user_id,
+	//				AVG(rating) AS avg_rating,
+	//				COUNT(*) AS review_count
+	//			FROM reviews
+	//			GROUP BY target_user_id
+	//		) t ON t.target_user_id = users.id;
+	//	select * from v_product;
+	//`
+	// 这里可以用这个view，但我直接分查了
 	ratings, err := s.statService.BatchGetUserRating(ctx, UserIDs)
 	if err != nil {
 		return nil, err
