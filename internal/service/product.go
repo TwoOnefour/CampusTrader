@@ -88,8 +88,9 @@ func (s *ProductService) ListMyProducts(ctx context.Context, sellerID uint64, pa
 		Where("seller_id = ?", sellerID).
 		Order("created_at DESC")
 	db = paginate(pageParam)(db)
-	err := db. // 按时间倒序
-		Find(&products).Error
+	if err := db.Find(&products).Error; err != nil {
+		return nil, err
+	}
 	return getUserRatingsByProducts(ctx, s.statService, products)
 }
 
