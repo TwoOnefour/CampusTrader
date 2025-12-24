@@ -374,7 +374,6 @@ const handleMenuUpdate = (key: string) => {
     message.warning('请先登录')
     return
   }
-  currentView.value = value
   if (window.innerWidth < 768) {
     collapsed.value = true // 手机端点击菜单后自动收回
   }

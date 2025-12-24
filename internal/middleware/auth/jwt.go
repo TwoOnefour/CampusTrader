@@ -32,7 +32,7 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 		token, err := jwt.ParseWithClaims(tokenString, &jwtUtils.AuthClaims{}, func(token *jwt.Token) (interface{}, error) {
 			return jwtKey, nil
 		})
-		
+
 		if err != nil || !token.Valid {
 			response.Error(ctx, http.StatusUnauthorized, "请先登录")
 			ctx.Abort()
