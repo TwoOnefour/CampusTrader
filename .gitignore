@@ -1,1 +1,7 @@
 .env
+GH_TOKEN
+CampusTrader
+campustrader.tar.gz
+internal/assets/dist
+
+*.idea
