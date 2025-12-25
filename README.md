@@ -32,6 +32,13 @@ CampusTrader/
 
 **因为光是实现上面，代码量就要爆了，哥们写了2000多行了，github提交战绩可查**
 
+## 快速使用
+```
+git clone https://github.com/twoonefour/campustrader.git
+cd campustrader
+cd frontend && npm build && cd .. && go build -o cmd/main.go campustrader && ./campustrader
+```
+
 ## 实现难点
 
 ### 难点1 数据库设计
