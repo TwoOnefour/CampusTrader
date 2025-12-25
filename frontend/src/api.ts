@@ -142,11 +142,12 @@ export const api = {
 
     // 搜索商品
     // 对应 Go: productGroup.GET("/search", ...) -> /api/v1/products/search
-    searchProducts: (keyword: string) =>
+    searchProducts: (keyword: string, last_id: number, page_size: number) =>
         request.get<ProductListResp>('/products/search', {
             params: {
                 keyword: keyword,
-                count: 20
+                last_id: last_id,
+                page_size: page_size,
             }
         }),
     getHotCategories: () => request.get<{ list: Category[] }>('/categories/popular'),

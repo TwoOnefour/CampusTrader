@@ -122,23 +122,18 @@ func (c *ProductController) ListMyProducts(ctx *gin.Context) {
 }
 
 func (c *ProductController) SearchProducts(ctx *gin.Context) {
-	var req SearchProductParams
+	var req model.PageParam
 	if err := ctx.ShouldBindQuery(&req); err != nil {
 		response.Error(ctx, http.StatusBadRequest, err.Error())
 		return
 	}
-
-	if req.Count > 100 {
-		req.Count = 100
-	}
-	products, err := c.productSvc.SearchProduct(ctx, req.Keyword, req.Count)
+	keyword := ctx.Query("keyword")
+	products, err := c.productSvc.SearchProduct(ctx, req, keyword)
 	if err != nil {
 		response.Error(ctx, http.StatusInternalServerError, err.Error())
 		return
 	}
-	response.Success(ctx, ListUserProductSearchResult{
-		List: products,
-	})
+	response.Success(ctx, products)
 }
 
 func (c *ProductController) SearchProductsSuggestion(ctx *gin.Context) {
@@ -152,6 +147,7 @@ func (c *ProductController) SearchProductsSuggestion(ctx *gin.Context) {
 		response.Error(ctx, http.StatusBadRequest, err.Error())
 		return
 	}
+
 	response.Success(ctx, map[string]interface{}{
 		"list": productPrefix,
 	})

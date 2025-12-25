@@ -170,17 +170,44 @@ func (s *ProductService) ListProductsByProc(ctx context.Context, categoryID uint
 	return &res, nil
 }
 
-func (s *ProductService) SearchProduct(ctx context.Context, keyword string, count uint64) ([]model.Product, error) {
-	db := s.db.WithContext(ctx).Model(&model.Product{})
+func (s *ProductService) SearchProduct(ctx context.Context, pageParam model.PageParam, keyword string) (*model.PageData[model.ProductWithUserRating], error) {
+	db := s.db.WithContext(ctx).Model(&model.Product{}).
+		Where("status = ?", "available").
+		Where("name like ?", "%"+keyword+"%")
+	db = paginate(pageParam)(db)
 	var products []model.Product
-	err := db.Where("name like ?", "%"+keyword+"%").Order("id desc").Limit(int(count)).Find(&products).Error
-	return products, err
+	err := db.Limit(int(pageParam.PageSize + 1)).Preload("Seller").Preload("Category").Find(&products).Error
+	if err != nil {
+		return nil, err
+	}
+	type resType = model.PageData[model.ProductWithUserRating]
+	var res resType
+	productWithRating, err := getUserRatingsByProducts(ctx, s.statService, products)
+	if err != nil {
+		return nil, err
+	}
+	minProductLength := func(a, b int) int {
+		if a > b {
+			return b
+		}
+		return a
+	}(int(pageParam.PageSize), len(productWithRating))
+	res = resType{
+		List: productWithRating[:minProductLength],
+		HasMore: func() bool {
+			if len(productWithRating) > int(pageParam.PageSize) {
+				return true
+			}
+			return false
+		}(),
+	}
+	return &res, nil
 }
 
 func (s *ProductService) SearchSuggestion(ctx context.Context, keyword string) ([]string, error) {
 	db := s.db.WithContext(ctx).Model(&model.Product{})
 	var products []model.Product
-	err := db.Where("name like ? and status = 'available'", "%"+keyword+"%").Order("id desc").Limit(5).Find(&products).Error
+	err := db.Where("name like ? and status = 'available'", "%"+keyword+"%").Order("id desc").Group("name").Limit(5).Find(&products).Error
 	if err != nil {
 		return nil, err
 	}

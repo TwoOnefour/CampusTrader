@@ -32,6 +32,28 @@ const searchOptions = ref<AutoCompleteOption[]>([])
 const collapsed = ref(false)
 // 简单的防抖定时器，防止请求太频繁
 let searchTimer: any = null
+const isSelectTriggered = ref(false)
+
+const onSearchSelect = (value) => {
+  searchKeyword.value = value // 确保值已更新
+  isSelectTriggered.value = true // 标记：这是选中触发的
+  handleSearch(value)
+
+  // 在当前事件循环结束后（或短暂延迟后）重置标志位
+  // 这里是为了让随后的 keydown 事件能读取到 true
+  setTimeout(() => {
+    isSelectTriggered.value = false
+  }, 100)
+}
+
+// 处理回车事件
+const onSearchEnter = (e) => {
+  // 如果刚刚触发了 select，则忽略这次回车
+  if (isSelectTriggered.value) return
+
+  // 只有没选中任何东西直接敲回车（搜纯文本）时，才走这里
+  handleSearch(searchKeyword.value)
+}
 
 // 当用户输入内容变化时触发
 const handleSearchInput = (value: string) => {
@@ -81,7 +103,7 @@ const handleSearch = async (value?: string) => {
 
   try {
     message.loading('搜索中...')
-    const res = await api.searchProducts(keyword)
+    const res = await api.searchProducts(keyword, 0, 8)
     // @ts-ignore
     products.value = res.list || []
     if (products.value.length === 0) {
@@ -171,14 +193,10 @@ const handleLoginSubmit = async () => {
 
     // @ts-ignore
     const tokenStr = res.token
-
-
     localStorage.setItem('token', tokenStr)
     const meresp = await api.getMe()
     token.value = tokenStr
     localStorage.setItem('user', meresp.nickname)
-
-
     message.success('登录成功！')
     showLoginModal.value = false
 
@@ -539,11 +557,11 @@ onMounted(() => {
           <n-auto-complete
               v-model:value="searchKeyword"
               :options="searchOptions"
-              placeholder="输入关键词搜索 (例如: Mac)"
+              placeholder="输入关键词搜索"
               clearable
               @update:value="handleSearchInput"
-              @select="handleSearch"
-              @keydown.enter="handleSearch"
+              @select="onSearchSelect"
+              @keydown.enter="onSearchEnter"
           >
             <template #prefix>
               <n-icon :component="SearchOutline" />
