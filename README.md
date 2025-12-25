@@ -251,7 +251,7 @@ select email from user where username = '丰川祥子';
 
 <img width="627" height="163" alt="image" src="https://github.com/user-attachments/assets/b2296d15-2619-4e69-a4b8-3414ae650dc7" />
 
-这里间接依赖了非主键供应商id，会出现三大问题，修改插入删除，3范式则是有意义的
+这里间接依赖了非主键供应商id，会出现三大问题，修改插入删除，在这种情况下，3范式则是必须的，因为要**维护数据的唯一真实来源**
 
 ### 触发器/视图/存储过程，业务与底层数据的思考
 
