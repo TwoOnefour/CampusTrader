@@ -4,6 +4,15 @@
 
 示例地址如下 **<H2>c.214233.xyz</H2>**
 
+## 项目目录
+```
+CampusTrader/
+├── frontend
+├── internal
+├── pkg
+```
+- frontend vue 前端
+- internal, pkg go后端
 
 ## 截止当前进度
 
