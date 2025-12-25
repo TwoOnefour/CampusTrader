@@ -84,8 +84,14 @@ func (s *ProductService) ListProducts(ctx context.Context, pageParam model.PageP
 	if err != nil {
 		return nil, err
 	}
+	minProductLength := func(a, b int) int {
+		if a > b {
+			return b
+		}
+		return a
+	}(int(pageParam.PageSize), len(productWithRating))
 	res = resType{
-		List: productWithRating[:pageParam.PageSize],
+		List: productWithRating[:minProductLength],
 		HasMore: func() bool {
 			if len(productWithRating) > int(pageParam.PageSize) {
 				return true
@@ -103,7 +109,7 @@ func (s *ProductService) ListMyProducts(ctx context.Context, sellerID uint64, pa
 		Where("seller_id = ?", sellerID).
 		Order("created_at DESC")
 	db = paginate(pageParam)(db)
-	if err := db.Preload("Seller").Preload("Category").Find(&products).Error; err != nil {
+	if err := db.Limit(int(pageParam.PageSize + 1)).Preload("Seller").Preload("Category").Find(&products).Error; err != nil {
 		return nil, err
 	}
 	type resType = model.PageData[model.ProductWithUserRating]
@@ -112,8 +118,14 @@ func (s *ProductService) ListMyProducts(ctx context.Context, sellerID uint64, pa
 	if err != nil {
 		return nil, err
 	}
+	minProductLength := func(a, b int) int {
+		if a > b {
+			return b
+		}
+		return a
+	}(int(pageParam.PageSize), len(productWithRating))
 	res = resType{
-		List: productWithRating[:pageParam.PageSize],
+		List: productWithRating[:minProductLength],
 		HasMore: func() bool {
 			if len(productWithRating) > int(pageParam.PageSize) {
 				return true
@@ -126,9 +138,11 @@ func (s *ProductService) ListMyProducts(ctx context.Context, sellerID uint64, pa
 
 func (s *ProductService) ListProductsByProc(ctx context.Context, categoryID uint64, pageParam model.PageParam) (*model.PageData[model.ProductWithUserRating], error) {
 	var products []model.Product
-	db := s.db.WithContext(ctx)
+	db := s.db.WithContext(ctx).Model(&model.Product{}).Preload("Seller").Preload("Category").Where("category_id = ?", categoryID)
 	db = paginate(pageParam)(db)
-	err := db.Raw("CALL sp_search_and_count_by_category(?)", categoryID).Scan(&products).Error
+	// 用存储过程就分页不了，老冯子飞走了
+	err := db.Limit(int(pageParam.PageSize + 1)).Scan(&products).Error
+	//err := db.Raw("CALL sp_search_and_count_by_category(?)", categoryID).Limit(int(pageParam.PageSize + 1)).Scan(&products).Error
 	if err != nil {
 		return nil, err
 	}
@@ -138,8 +152,14 @@ func (s *ProductService) ListProductsByProc(ctx context.Context, categoryID uint
 	if err != nil {
 		return nil, err
 	}
+	minProductLength := func(a, b int) int {
+		if a > b {
+			return b
+		}
+		return a
+	}(int(pageParam.PageSize), len(productWithRating))
 	res = resType{
-		List: productWithRating[:pageParam.PageSize],
+		List: productWithRating[:minProductLength],
 		HasMore: func() bool {
 			if len(productWithRating) > int(pageParam.PageSize) {
 				return true

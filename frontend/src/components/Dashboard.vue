@@ -25,8 +25,8 @@ const username = ref(localStorage.getItem('user') || '')
 const currentView = ref('market')
 const products = ref<Product[]>([])
 const searchKeyword = ref('')
-const category_id = ref('')
-
+const current_category_id = ref('')
+const currentCategoryName = ref('')
 // 存放下拉框的选项，格式必须是 { label: '显示文字', value: '选中后的值' }
 const searchOptions = ref<AutoCompleteOption[]>([])
 const collapsed = ref(false)
@@ -266,6 +266,24 @@ const currentPage = ref(1)     // 当前第几页（仅用于显示）
 const cursorHistory = ref([0]) // 游标历史栈：第1页对应0，第2页对应上一页最后一条ID...
 const hasMore = ref(true)      // 是否还有下一页数据
 
+const handleCategorySelect = (cat: Category) => {
+  current_category_id.value = cat.id.toString()
+  currentCategoryName.value = cat.name.toString()
+  // 切换回交易市场视图
+  currentView.value = 'market'
+
+  // 重置并重新加载市场数据 (useCursor=false, reset=true)
+  loadMarket(false, true)
+}
+
+// 3. 新增：处理取消分类搜索的逻辑（点击 Tag 关闭按钮）
+const handleClearCategory = () => {
+  current_category_id.value = ''
+  currentCategoryName.value = ''
+  // 重新加载所有商品
+  loadMarket(false, true)
+}
+
 // --- 修改后的加载函数 ---
 // useCursor: 是否使用当前记录的游标去加载（用于翻页）
 // reset: 是否重置分页（用于切换菜单或搜索时）
@@ -284,7 +302,7 @@ const loadMarket = async (useCursor = false, reset = false, type = 'market') => 
     let res;
     // 调用 API
     if (type === 'market') {
-      res = await api.getProducts(lastId, pageSize, category_id.value)
+      res = await api.getProducts(lastId, pageSize, current_category_id.value)
     } else if (type === 'my-products') {
       res = await api.getMyProducts(lastId, pageSize)
     }
@@ -552,6 +570,17 @@ onMounted(() => {
 
       <n-layout-content content-style="padding: 24px; background-color: #f5f7f9; min-height: 100vh;">
         <div v-if="currentView === 'market' || currentView === 'my-products'">
+          <div v-if="currentView === 'market' && current_category_id" style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+            <span style="color: #666;">当前筛选：</span>
+            <n-tag
+                closable
+                type="primary"
+                size="large"
+                @close="handleClearCategory"
+            >
+              分类：{{ currentCategoryName }}
+            </n-tag>
+          </div>
           <n-grid x-gap="16" y-gap="16" cols="1 600:2 900:3 1200:4">
             <template v-for="item in products" :key="item.id">
               <n-grid-item v-if="item.image_url">
@@ -612,14 +641,14 @@ onMounted(() => {
           <n-card title="🔥 最火商品分类 (Top 3)">
             <n-list hoverable clickable>
               <n-list-item v-for="(cat, index) in hotCategories" :key="cat.id">
-                <n-thing :title="cat.name" content-style="margin-top: 10px;">
+                <n-thing :title="cat.name" content-style="margin-top: 10px;" @click="handleCategorySelect(cat)">
                   <template #description>
                     <n-tag type="error" size="small">No. {{ index + 1 }}</n-tag>
                   </template>
                   这里是 {{ cat.name }} 专区，包含了大量热门交易商品。
                 </n-thing>
                 <template #suffix>
-                  <n-button size="small">查看详情</n-button>
+                  <n-button size="small" @click="handleCategorySelect(cat)">查看详情</n-button>
                 </template>
               </n-list-item>
             </n-list>

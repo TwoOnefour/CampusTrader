@@ -160,3 +160,28 @@ BEGIN
     COMMIT;
 END;
 ```
+
+存储过程两条：
+```
+	CREATE PROCEDURE sp_search_and_count_by_category(
+		IN p_category_id BIGINT UNSIGNED
+	)
+	BEGIN
+		SELECT * FROM products
+		where 
+			category_id=p_category_id 
+			AND status='available';
+	END;
+```
+
+```
+	CREATE PROCEDURE sp_complete_order(IN p_order_id BIGINT UNSIGNED)
+	BEGIN
+		UPDATE orders SET status = 'completed', updated_at = NOW() WHERE id = p_order_id;
+		UPDATE products SET status = 'sold' WHERE id = (SELECT product_id FROM orders WHERE id = p_order_id);
+	END;
+```
+
+**在我用这个存储过程的时候bug就来了，因为我是浮标分页，用存储过程原生执行sql，就无法分页，必须要把分页逻辑写进存储过程**
+
+我真的急了，狗都不用
