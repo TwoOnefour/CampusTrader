@@ -179,7 +179,7 @@ END;
 ```
 
 存储过程两条：
-```
+```sql
 	CREATE PROCEDURE sp_search_and_count_by_category(
 		IN p_category_id BIGINT UNSIGNED
 	)
@@ -209,3 +209,129 @@ END;
 哥们，那我一行直接判断一下有没有用户id，然后加一句`.Where('seller_id = ?', user_id)`不比这个强？
 
 狗都不用
+
+
+## 稿子思路
+
+### 3nf设计是冗余/非冗余传统香烟和电子烟
+
+
+第一范式，第二范式自不用说，必然是满足的，打破了没有任何好处，本仓库表都是一个表一个主键且不可拆分
+
+问题在于3nf，试想数据库的存储逻辑，若你执行这样一个语句会发生什么呢
+
+```sql
+select email from user where name = '丰川祥子';
+```
+答案是，没有命中主键，直接触发全表扫描
+
+### 触发器/视图/存储过程，业务与底层数据的思考
+
+**前言，触发器/视图/存储过程，我认为已经是被时代淘汰了，没必要强行用**
+
+触发器，**数据改动日志，数据校验**
+
+视图，**权限控制，隐藏底层n个join的复杂实现**
+
+存储过程，**把很多sql糅杂在一起实现一个特定的逻辑函数**，或者直接实现一个输入输出，让业务层一行调用
+
+如果非要用，不妨问问自己，为什么一定要在数据库层做呢？上面这些能否可以在业务层做？
+
+**答案是肯定的**
+
+触发器与视图，不光维护麻烦，调用者还需要去思考该怎么用
+
+难道不符合我的逻辑，那我又要改掉触发器/视图/存储过程？这显然是不可能的
+
+像这个例子，我刚开始考虑的时候，只觉得我要搜某个类别，直接传给触发器一行调用。咋一看觉得简单好用，那如果我要搜某个用户发布的某个类别的产品呢？
+
+```sql
+	CREATE PROCEDURE sp_search_and_count_by_category(
+		IN p_category_id BIGINT UNSIGNED
+	)
+	BEGIN
+		SELECT * FROM products
+		where 
+			category_id=p_category_id 
+			AND status='available';
+	END;
+```
+
+**你是不是要连进数据库改存储过程了？还要给他重新取个名，因为你不能直接改这个，也许别人在用呢**
+
+触发器和视图都是同样的道理，说白了就是存储过程符合抽象设计概念，触发器不符合显式设计概念，而视图，可以用索引代替，就算为了强行满足3NF去使用视图，**某些性能方面还是不如破坏3nf+索引的场景**
+
+**底层数据就应该是底层数据，而不是带上业务逻辑**
+
+### 索引优化
+
+**前言，where查询多的地方，给他上索引，能优化覆盖则覆盖，不能则考虑不从索引做优化，这才是正确的，不要死磕数据库层**
+
+只分析product，因为这个实现只有product和categories相关的，查询多的场景，涉及数据库底层存储逻辑
+
+#### product
+```
+type Product struct {
+	Id          uint64         `gorm:"column:id;type:BIGINT UNSIGNED;primaryKey;" json:"id"`
+	Name        string         `gorm:"column:name;type:VARCHAR(100);comment:商品名称;not null;index:idx_name_ft,class:FULLTEXT;" json:"name"`     // 商品名称
+	Description string         `gorm:"column:description;type:TEXT;comment:商品描述;not null;" json:"description"`                                // 商品描述
+	Price       float64        `gorm:"column:price;type:DECIMAL(10, 2);comment:价格;not null;" json:"price"`                                    // 价格
+	CategoryId  uint64         `gorm:"column:category_id;type:BIGINT UNSIGNED;comment:分类ID;not null;index:idx_cat_status" json:"category_id"` // 分类ID
+	SellerId    uint64         `gorm:"column:seller_id;type:BIGINT UNSIGNED;comment:卖家ID;not null;" json:"seller_id"`                         // 卖家ID
+	Category    Category       `gorm:"foreignKey:CategoryId" json:"category,omitempty"`
+	Seller      User           `gorm:"foreignKey:SellerId;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT" json:"seller"`
+	Status      string         `gorm:"column:status;type:ENUM('available', 'sold', 'removed');comment:状态;default:available;index:idx_cat_status;index:idx_status" json:"status"` // 状态
+	Condition   string         `gorm:"column:condition;type:ENUM('new', 'like_new', 'good', 'fair', 'poor');comment:新旧程度;not null;" json:"condition"`                            // 新旧程度
+	ImageUrl    string         `gorm:"column:image_url;type:VARCHAR(255);comment:主图URL;" json:"image_url"`                                                                       // 主图URL
+	CreatedAt   time.Time      `gorm:"column:created_at;type:TIMESTAMP;default:CURRENT_TIMESTAMP;" json:"created_at"`
+	UpdatedAt   time.Time      `gorm:"column:updated_at;type:TIMESTAMP;default:CURRENT_TIMESTAMP;" json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deleted_at"`
+}
+```
+
+**以下两个sql压力可能会比较大**
+
+一个是模糊查询，如 `like %商品名%`，这种一定会触发全表扫，数据量少还好，数据量一多就容易超时卡死，直接给他上全文索引，或者你上elasticsearch直接解决问题
+
+另一个是根据类别查询，由于非主键查询一定会回表两次，这种就比较复杂，你必须要想明白，*前端要展示的东西是什么，把这些东西列出来，给他单独索引*
+
+这样问题还没解决，**根据最左匹配，你只能查 where category_id = xxx and status = xxx， 这种就不会触发全表扫**
+
+由于我还有个复杂查询，连order表找完成订单，去统计最热分类top3，这种情况就太复杂了，你不能考虑索引一次直接覆盖所有你要的数据，在数据库层两个表会瓶颈，你要么再来一个表统计，要么用sql8.0+窗口函数
+
+但无论怎么样，你category_id是肯定要加索引的，然后order表因为要根据category_id分组，你也要加索引
+
+总之上面这个问题，`(category_id)`，是肯定没错的，由于统计后需要展示种类名称，你再连个category表
+
+**还有在主页面，你要展示的一定是上架的商品，即status = 'available'**, 虽说也会回表，但在这个status也是可以索引加速的，直接给他上索引
+
+**总结**
+
+name全文索引，status单独索引，category_id单独索引
+
+### 锁与事务
+本设计没有加任何显式锁，由于go没有乐观锁，我直接靠数据库层的乐观锁+数据库事务保证数据一致
+
+在订单生成中，我的实现如下
+```
+	err := db.Transaction(func(tx *gorm.DB) error {
+		// 乐观锁
+		res := tx.Model(&model.Product{}).Where("id=? AND status='available'", itemID).Update("status", "sold")
+		if res.RowsAffected == 0 {
+			return errors.New("已售出")
+		}
+		return tx.Create(&model.Order{
+			ProductId: item.Id,
+			BuyerId:   buyerID,
+			Amount:    item.Price,
+			SellerId:  item.SellerId,
+		}).Error
+	})
+```
+
+go代码可能很多人没看过，简单说就是一个乐观锁，用status状态原子更新，最后提交事务订单
+
+**两个操作必须同时完成，所以必须用事务包裹，由于并发问题，可能别人已经购买过这个订单了，可以用乐观锁去尝试修改订单，让他返回错误**
+
+高阶实现你可以加redis lua原子解锁，速度会快很多，但这只是一个小作业，我就不上了
+
