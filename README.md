@@ -9,10 +9,11 @@
 CampusTrader/
 ├── frontend
 ├── internal
-├── pkg
 ```
 - frontend vue 前端
-- internal, pkg go后端
+- internal, go后端
+
+无数据库抽象层，controller + service 两层结构加个DAO，service层直接操作db对象, 
 
 ## 截止当前进度
 
@@ -38,7 +39,7 @@ git clone https://github.com/twoonefour/campustrader.git
 cd campustrader
 cd frontend && npm build && cd .. && go build -o cmd/main.go campustrader && ./campustrader
 ```
-
+需要填写数据库变量 `DATABASE_DSN` 为go dsn 格式
 ## 实现难点
 
 ### 难点1 数据库设计
