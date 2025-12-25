@@ -40,6 +40,8 @@ restart:
 upload:
 	scp -P $(REMOTE_PORT) $(TARGET_FILE) $(REMOTE_ADDR):$(REMOTE_PATH)/
 
+
+
 # 4. 清理产物
 clean:
 	rm -f $(BINARY_NAME)

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { h, ref, onMounted, computed, Component, reactive,  } from 'vue'
-import { api, type Product } from '../api'
+import {api, type Category, type Product} from '../api'
 import {
   NLayout, NLayoutSider, NLayoutHeader, NLayoutContent, NMenu,
   NButton, NCard, NInput, NSpace, NTag, NGrid, NGridItem, NList, NListItem, NThing, NResult,
@@ -15,19 +15,18 @@ import {
   BagHandleOutline, PersonOutline, LogOutOutline,
   CartOutline, AddCircleOutline, SearchOutline, CloudUploadOutline,FlameOutline,MenuOutline
 } from '@vicons/ionicons5'
-// import { CloudUpload } from '@vicons/fa'
-
-// --- 图标渲染辅助函数 ---
 function renderIcon(icon: Component) {
   return () => h(NIcon, null, { default: () => h(icon) })
 }
 const submitting = ref<boolean>(false)
 const message = useMessage()
 const token = ref(localStorage.getItem('token') || '')
-const username = ref(localStorage.getItem('user') || 'User')
+const username = ref(localStorage.getItem('user') || '')
 const currentView = ref('market')
 const products = ref<Product[]>([])
 const searchKeyword = ref('')
+const category_id = ref('')
+
 // 存放下拉框的选项，格式必须是 { label: '显示文字', value: '选中后的值' }
 const searchOptions = ref<AutoCompleteOption[]>([])
 const collapsed = ref(false)
@@ -40,8 +39,8 @@ const handleSearchInput = (value: string) => {
 
   // 1. 如果输入为空
   if (!value || !value.trim()) {
-    searchOptions.value = [] // 清空下拉建议
-    loadMarket()             // <---【核心修改】新增这行：立即重新加载默认市场列表
+    searchOptions.value = []
+    loadMarket()
     return
   }
 
@@ -172,9 +171,13 @@ const handleLoginSubmit = async () => {
 
     // @ts-ignore
     const tokenStr = res.token
+
+
     localStorage.setItem('token', tokenStr)
-    localStorage.setItem('user', username.value)
+    const meresp = await api.getMe()
     token.value = tokenStr
+    localStorage.setItem('user', meresp.nickname)
+
 
     message.success('登录成功！')
     showLoginModal.value = false
@@ -183,7 +186,7 @@ const handleLoginSubmit = async () => {
     loadMarket()
 
     // (可选) 获取一下用户信息更新右上角名字，这里简单模拟
-    username.value = loginForm.account
+    username.value = meresp.nickname
 
   } catch (err: any) {
     message.error(err.message || '登录失败，请检查账号密码')
@@ -266,7 +269,7 @@ const hasMore = ref(true)      // 是否还有下一页数据
 // --- 修改后的加载函数 ---
 // useCursor: 是否使用当前记录的游标去加载（用于翻页）
 // reset: 是否重置分页（用于切换菜单或搜索时）
-const loadMarket = async (useCursor = false, reset = false) => {
+const loadMarket = async (useCursor = false, reset = false, type = 'market') => {
   try {
     if (reset) {
       currentPage.value = 1
@@ -278,9 +281,13 @@ const loadMarket = async (useCursor = false, reset = false) => {
     // cursorHistory 比如是 [0, 100, 92]，currentPage=2，则取 index=1 的 100
     const cursorIndex = currentPage.value - 1
     const lastId = useCursor ? cursorHistory.value[cursorIndex] : 0
-
+    let res;
     // 调用 API
-    const res = await api.getProducts(lastId, pageSize)
+    if (type === 'market') {
+      res = await api.getProducts(lastId, pageSize, category_id.value)
+    } else if (type === 'my-products') {
+      res = await api.getMyProducts(lastId, pageSize)
+    }
 
     // @ts-ignore
     const list = res.list || []
@@ -288,7 +295,7 @@ const loadMarket = async (useCursor = false, reset = false) => {
 
     // 判断是否还有下一页：如果返回的数量 < pageSize，说明数据取完了
     // 注意：后端返回 total 仅仅是本次查询的数量，不是总数，所以不能用 total 判断
-    if (list.length < pageSize) {
+    if (!res.has_more) {
       hasMore.value = false
     } else {
       hasMore.value = true
@@ -308,14 +315,26 @@ const loadMarket = async (useCursor = false, reset = false) => {
 const handlePrevPage = () => {
   if (currentPage.value > 1) {
     currentPage.value--
-    loadMarket(true) // true 表示使用历史游标
+    switch (currentView.value) {
+      case ('market'):
+          loadMarket(true) // true 表示使用历史游标
+          break
+      case ('my-products'):
+          loadMarket(true, false, 'my-products')
+    }
   }
 }
 
 const handleNextPage = () => {
   if (hasMore.value) {
     currentPage.value++
-    loadMarket(true)
+    switch (currentView.value) {
+      case ('market'):
+        loadMarket(true)
+        break
+      case ('my-products'):
+        loadMarket(true, false, 'my-products')
+    }
   }
 }
 const handleCreateSubmit = async () => {
@@ -440,10 +459,24 @@ const handleBuy = async (id: number) => {
   }
 }
 
+const handleUserSession = async () => {
+  try {
+    await api.getMe()
+  } catch (error) {
+
+    if (error?.response.data.statusCode === 401 && localStorage.getItem('token') != null)  {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      message.info("登陆已过期")
+    }
+  }
+}
+
 onMounted(() => {
   if (window.innerWidth < 768) {
     collapsed.value = true
   }
+  handleUserSession()
   loadMarket()
 })
 </script>
@@ -560,9 +593,8 @@ onMounted(() => {
             </template>
           </n-grid>
           <n-empty v-if="products.length === 0" description="这里空空如也" style="margin-top: 100px" />
-          <div v-if="currentView === 'market' && products.length > 0"
+          <div v-if="(currentView === 'market' || currentView === 'my-products') && products.length > 0"
                style="display: flex; justify-content: center; align-items: center; margin-top: 30px; gap: 20px;">
-
             <n-button :disabled="currentPage === 1" @click="handlePrevPage">
               上一页
             </n-button>

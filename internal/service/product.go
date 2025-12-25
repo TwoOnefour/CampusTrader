@@ -74,7 +74,7 @@ func (s *ProductService) ListProducts(ctx context.Context, pageParam model.PageP
 	db := s.db.WithContext(ctx).Model(&model.Product{}).Where("status = ?", "available")
 	db = paginate(pageParam)(db)
 	var products []model.Product
-	err := db.Limit(int(pageParam.PageSize + 1)).Find(&products).Error
+	err := db.Limit(int(pageParam.PageSize + 1)).Preload("Seller").Preload("Category").Find(&products).Error
 	if err != nil {
 		return nil, err
 	}
@@ -85,8 +85,13 @@ func (s *ProductService) ListProducts(ctx context.Context, pageParam model.PageP
 		return nil, err
 	}
 	res = resType{
-		List:    productWithRating,
-		HasMore: true,
+		List: productWithRating[:pageParam.PageSize],
+		HasMore: func() bool {
+			if len(productWithRating) > int(pageParam.PageSize) {
+				return true
+			}
+			return false
+		}(),
 	}
 	return &res, nil
 }
@@ -98,7 +103,7 @@ func (s *ProductService) ListMyProducts(ctx context.Context, sellerID uint64, pa
 		Where("seller_id = ?", sellerID).
 		Order("created_at DESC")
 	db = paginate(pageParam)(db)
-	if err := db.Find(&products).Error; err != nil {
+	if err := db.Preload("Seller").Preload("Category").Find(&products).Error; err != nil {
 		return nil, err
 	}
 	type resType = model.PageData[model.ProductWithUserRating]
@@ -108,8 +113,13 @@ func (s *ProductService) ListMyProducts(ctx context.Context, sellerID uint64, pa
 		return nil, err
 	}
 	res = resType{
-		List:    productWithRating,
-		HasMore: true,
+		List: productWithRating[:pageParam.PageSize],
+		HasMore: func() bool {
+			if len(productWithRating) > int(pageParam.PageSize) {
+				return true
+			}
+			return false
+		}(),
 	}
 	return &res, nil
 }
@@ -129,8 +139,13 @@ func (s *ProductService) ListProductsByProc(ctx context.Context, categoryID uint
 		return nil, err
 	}
 	res = resType{
-		List:    productWithRating,
-		HasMore: true,
+		List: productWithRating[:pageParam.PageSize],
+		HasMore: func() bool {
+			if len(productWithRating) > int(pageParam.PageSize) {
+				return true
+			}
+			return false
+		}(),
 	}
 	return &res, nil
 }

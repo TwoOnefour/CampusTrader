@@ -8,13 +8,24 @@ const request = axios.create({
 })
 
 // 2. 请求拦截器：自动把 Token 带上
-request.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token')
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-})
+request.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem('token')
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`
+        }
+        if (config.params) {
+            const params = config.params;
+            Object.keys(params).forEach(key => {
+                if (params[key] === null || params[key] === undefined || params[key] === '') {
+                    delete params[key];
+                }
+            });
+        }
+        return config
+    },
+
+)
 
 // 3. 响应拦截器：简化数据返回，处理报错
 request.interceptors.response.use(
@@ -74,9 +85,8 @@ export interface LoginReq {
 // 对应 internal/controller/product.go 中的 ListProductSearchResult
 export interface ProductListResp {
     list: Product[]
-    total: number
-    page: number
-    size: number
+    has_more: boolean
+    last_id: number
 }
 
 export interface CreateProductReq {
@@ -86,6 +96,14 @@ export interface CreateProductReq {
     category_id: number | null // 允许初始为空
     condition: string
     image_url: string
+}
+
+export interface UserMeResp {
+    nickname: string
+    email: string
+    phone: string
+    username: string
+
 }
 
 // --- API 方法导出 ---
@@ -105,19 +123,21 @@ export const api = {
 
     // 获取当前用户信息
     // 对应 Go: privateGroup.GET("/users/me", ...) -> /api/v1/users/me
-    getMe: () => request.get('/users/me'),
+    getMe: () => request.get<UserMeResp>('/users/me'),
 
     // 获取我发布的商品
     // 对应 Go: privateGroup.GET("/users/me/products", ...) -> /api/v1/users/me/products
-    getMyProducts: () => request.get<ProductListResp>('/users/me/products'),
+    getMyProducts: (lastId: number = 0, pageSize: number = 8) => request.get<ProductListResp>('/users/me/products', {
+        params: { last_id: lastId, page_size: pageSize }
+    }),
 
     // ----------------- Product Group (/api/v1/products) -----------------
 
     // 获取商品列表
     // 对应 Go: productGroup.GET("", ...) -> /api/v1/products
-    getProducts: (lastId: number = 0, pageSize: number = 8) =>
+    getProducts: (lastId: number = 0, pageSize: number = 8, category: string) =>
         request.get<ProductListResp>('/products', {
-            params: { last_id: lastId, page_size: pageSize }
+            params: { last_id: lastId, page_size: pageSize, category: category }
         }),
 
     // 搜索商品

@@ -14,7 +14,7 @@ type Product struct {
 	CategoryId  uint64         `gorm:"column:category_id;type:BIGINT UNSIGNED;comment:分类ID;not null;" json:"category_id"` // 分类ID
 	SellerId    uint64         `gorm:"column:seller_id;type:BIGINT UNSIGNED;comment:卖家ID;not null;" json:"seller_id"`     // 卖家ID
 	Category    Category       `gorm:"foreignKey:CategoryId" json:"category,omitempty"`
-	Seller      User           `gorm:"foreignKey:SellerId;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
+	Seller      User           `gorm:"foreignKey:SellerId;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT" json:"seller"`
 	Status      string         `gorm:"column:status;type:ENUM('available', 'sold', 'removed');comment:状态;default:available;" json:"status"`           // 状态
 	Condition   string         `gorm:"column:condition;type:ENUM('new', 'like_new', 'good', 'fair', 'poor');comment:新旧程度;not null;" json:"condition"` // 新旧程度
 	ImageUrl    string         `gorm:"column:image_url;type:VARCHAR(255);comment:主图URL;" json:"image_url"`                                            // 主图URL
