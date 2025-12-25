@@ -519,7 +519,7 @@ onMounted(() => {
 
 <template>
   <n-layout position="absolute" has-sider>
-    <div class="mobile-menu-btn" @click="collapsed = !collapsed">
+    <div class="mobile-menu-btn" @click="collapsed = !collapsed" style="margin-top: 35px;">
       <n-icon size="28"><MenuOutline /></n-icon>
     </div>
 
