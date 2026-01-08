@@ -20,7 +20,7 @@ build-ui:
 # 3. 静态编译 Go 后端
 build-go:
 	@echo "正在构建 Go 二进制文件 (静态编译)..."
-	go build -ldflags="-s -w" -o CampusTrader cmd/main.go
+	CGO_ENABLED=1 go build -ldflags="-s -w -extldflags '-static'" -o CampusTrader cmd/main.go
 
 pack:
 	rm -rf campustrader.tar.gz
