@@ -6,7 +6,7 @@
 
 ## 一键部署
 ### docker
->> docker run -d -p 8080:8080 twoonefour1/campustrader
+> docker run -d -p 8080:8080 twoonefour1/campustrader
 
 ## 项目目录
 ```
