@@ -4,6 +4,10 @@
 
 示例地址如下 **<H2>c.214233.xyz</H2>**
 
+## 一键部署
+### docker
+>> docker run -d -p 8080:8080 twoonefour1/campustrader
+
 ## 项目目录
 ```
 CampusTrader/
