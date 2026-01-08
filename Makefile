@@ -4,16 +4,9 @@
 # 变量定义
 UI_DIR = frontend
 ASSETS_DIR = internal/assets/dist
-BINARY_NAME = CampusTrader
-REMOTE_USER = root
-REMOTE_HOST = lucianawa.cn
-REMOTE_ADDR = $(REMOTE_USER)@$(REMOTE_HOST)
-REMOTE_PORT = 23333
-REMOTE_PATH = /opt/campustrader
-TARGET_FILE = campustrader.tar.gz
 
 # 1. 完整构建：先做前端，再做后端
-build: build-ui build-go pack upload restart clean
+build: build-ui build-go pack build-docker
 
 # 2. 编译前端
 build-ui:
@@ -33,17 +26,6 @@ pack:
 	rm -rf campustrader.tar.gz
 	tar -zcvf campustrader.tar.gz ./CampusTrader ./.env ./static ./sqlite.db
 
-restart:
-	ssh -p $(REMOTE_PORT) $(REMOTE_ADDR) 'cd $(REMOTE_PATH) && \
-		tar -zxvf $(TARGET_FILE) && \
-		systemctl restart campustrader'
-
-upload:
-	scp -P $(REMOTE_PORT) $(TARGET_FILE) $(REMOTE_ADDR):$(REMOTE_PATH)/
-
-# 4. 清理产物
-clean:
-	rm -f $(BINARY_NAME)
-	rm -rf $(ASSETS_DIR)/*
-	rm -rf campustrader.tar.gz
-	ssh -p $(REMOTE_PORT) $(REMOTE_ADDR) 'cd $(REMOTE_PATH) && rm -rf $(TARGET_FILE)'
+build-docker:
+	docker build . -t twoonefour1/campustrader
+	docker push twoonefour1/campustrader
