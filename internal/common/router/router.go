@@ -53,7 +53,6 @@ func InitRouter(
 		privateGroup := v1.Group("/")
 		privateGroup.Use(auth.JWTAuthMiddleware())
 		{
-
 			privateGroup.GET("/users/me", userCtrl.Me)
 			privateGroup.GET("/users/me/products", productCtrl.ListMyProducts)
 			privateGroup.POST("/products", productCtrl.CreateProduct)    // 创建商品用 POST /products

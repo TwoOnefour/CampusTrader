@@ -7,6 +7,7 @@ import (
 	"CampusTrader/internal/controller"
 	"CampusTrader/internal/service"
 	"log"
+	"os"
 
 	"github.com/joho/godotenv"
 )
@@ -16,8 +17,11 @@ func main() {
 	if err != nil {
 		log.Println("Error loading .env file")
 	}
-	database.InitMySQL()
-
+	if os.Getenv("CAMPUSTRADER_DB_TYPE") == "MYSQL" {
+		database.InitMySQL()
+	} else {
+		database.InitSqlite()
+	}
 	logService := service.NewLogService(database.DB)
 	userService := service.NewUserService(database.DB)
 

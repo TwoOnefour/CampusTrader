@@ -1,0 +1,66 @@
+package database
+
+import (
+	"CampusTrader/internal/model"
+	"log"
+	"os"
+	"time"
+
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+)
+
+func InitSqlite() {
+	dsn := os.Getenv("DATABASE_DSN")
+	if dsn == "" {
+		dsn = "sqlite.db"
+	}
+	// 2. 配置 GORM 日志 (这对于毕设调试非常重要！)
+	// 这样控制台会打印出每一条执行的 SQL 语句
+	newLogger := logger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
+		logger.Config{
+			SlowThreshold:             time.Second,  // 慢 SQL 阈值
+			LogLevel:                  logger.Error, // 级别：Info 会打印所有 SQL
+			IgnoreRecordNotFoundError: true,         // 忽略 ErrRecordNotFound 错误
+			Colorful:                  true,         // 彩色打印
+		},
+	)
+
+	var err error
+	DB, err = gorm.Open(sqlite.Open(dsn), &gorm.Config{
+		Logger: newLogger,
+	})
+
+	if err != nil {
+		panic("连接数据库失败: " + err.Error())
+	}
+
+	// 3. 配置连接池 (Connection Pool)
+	// 获取底层的 sql.DB 对象
+	sqlDB, err := DB.DB()
+	if err != nil {
+		panic("获取底层 sql.DB 失败")
+	}
+
+	sqlDB.SetMaxIdleConns(10)
+
+	sqlDB.SetMaxOpenConns(100)
+
+	// SetConnMaxLifetime 设置了连接可复用的最大时间
+	sqlDB.SetConnMaxLifetime(time.Hour)
+
+	allModels := []interface{}{
+		&model.User{},
+		&model.Product{},
+		&model.Category{},
+		&model.Order{},
+		&model.ProductSoldLog{},
+		&model.ProductDropLogs{},
+		&model.Review{},
+	}
+	if err := DB.AutoMigrate(allModels...); err != nil {
+		return
+	}
+}

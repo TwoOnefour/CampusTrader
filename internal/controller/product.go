@@ -94,8 +94,8 @@ func (c *ProductController) CreateProduct(ctx *gin.Context) {
 		Description: req.Description,
 		Price:       req.Price,
 		CategoryId:  req.CategoryId,
-		Status:      req.Status,
-		Condition:   req.Condition,
+		Status:      model.ProductStatus(req.Status),
+		Condition:   model.ProductCondition(req.Condition),
 		ImageUrl:    req.ImageUrl,
 		SellerId:    uint64(ctx.GetUint("userID")),
 	})

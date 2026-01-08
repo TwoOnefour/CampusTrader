@@ -11,9 +11,6 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-// DB 全局变量，其他包直接用 database.DB 调用
-var DB *gorm.DB
-
 func InitMySQL() {
 	// 1. 配置 DSN (Data Source Name)
 	// 格式: 用户名:密码@tcp(IP:端口)/数据库名?配置项

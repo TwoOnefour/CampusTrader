@@ -18,9 +18,10 @@ build: build-ui build-go pack upload restart clean
 # 2. 编译前端
 build-ui:
 	@echo "正在构建前端..."
-	cd $(UI_DIR) && bash -i -c "nvm use 22 && yarn install && npm run build"
+	cd $(UI_DIR) && bash -i -c "nvm use 24 && yarn install && npm run build"
 	@echo "拷贝前端产物到 Go 目录..."
 	rm -rf $(ASSETS_DIR)/*
+	mkdir -p $(ASSETS_DIR)
 	cp -r $(UI_DIR)/dist/* $(ASSETS_DIR)/
 
 # 3. 静态编译 Go 后端
@@ -30,7 +31,7 @@ build-go:
 
 pack:
 	rm -rf campustrader.tar.gz
-	tar -zcvf campustrader.tar.gz ./CampusTrader ./.env ./static
+	tar -zcvf campustrader.tar.gz ./CampusTrader ./.env ./static ./sqlite.db
 
 restart:
 	ssh -p $(REMOTE_PORT) $(REMOTE_ADDR) 'cd $(REMOTE_PATH) && \
@@ -39,8 +40,6 @@ restart:
 
 upload:
 	scp -P $(REMOTE_PORT) $(TARGET_FILE) $(REMOTE_ADDR):$(REMOTE_PATH)/
-
-
 
 # 4. 清理产物
 clean:
