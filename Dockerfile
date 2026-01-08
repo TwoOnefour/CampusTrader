@@ -8,7 +8,7 @@ FROM node:24-alpine AS ui-builder
 WORKDIR /app/frontend
 
 # 优化缓存：先拷贝依赖文件
-COPY frontend/package.json frontend/yarn.lock ./
+COPY frontend/package.json ./
 
 # 安装依赖
 RUN yarn install
