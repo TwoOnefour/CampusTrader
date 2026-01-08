@@ -23,7 +23,7 @@ RUN npm run build
 # 阶段 2: 后端构建 (Go Builder)
 # 对应 Makefile 中的 build-go
 # ==========================================
-FROM golang:1.23-alpine AS go-builder
+FROM golang:1.24-alpine AS go-builder
 
 # 安装构建依赖 (CGO_ENABLED=1 需要 gcc 和 musl-dev)
 RUN apk add --no-cache build-base
