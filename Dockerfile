@@ -4,7 +4,7 @@
 # ==========================================
 FROM node:24-alpine AS ui-builder
 
-# 设置工作目录
+# 设置工作目
 WORKDIR /app/frontend
 
 # 优化缓存：先拷贝依赖文件
